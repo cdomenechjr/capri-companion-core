@@ -1,0 +1,18 @@
+import {Capability} from '../agency';
+import {RuntimeCapabilities} from '../shared';
+export function providerCapabilities(status?:RuntimeCapabilities):Capability[]{return [
+ {id:'reasoning',name:'Reasoning',available:status?.reasoning.available??false,operations:['chat','tools'],permission:'Selected reasoning provider and metered budget for cloud requests',verification:status?.reasoning.verification??'Configuration not supplied',reason:status?.reasoning.reason||(!status?'Reasoning configuration is owned by the service.':undefined)},
+ {id:'images',name:'Image generation and editing',available:status?.images.available??false,operations:['generate_image'],permission:'Explicit image provider policy, configured OpenAI key and available metered budget',verification:status?.images.verification??'Configuration not supplied',reason:status?.images.reason||(!status?'Image provider configuration is owned by the service.':undefined)},
+ {id:'speech',name:'Speech',available:status?.speech.available??false,operations:status?.speech.operations??[],permission:'Configured speech provider or installed local speech models',verification:status?.speech.verification??'Configuration not supplied',reason:status?.speech.reason||(!status?'Speech configuration is owned by the service.':undefined)},
+ ];}
+export function capabilities(browserAvailable:boolean,gameTitles:string[]=[]):Capability[]{return [
+ {id:'windows',name:'Windows computer use',available:process.platform==='win32',operations:['inspect','invoke','type','click','scroll','drag','manage windows','launch apps'],permission:'Active task; local scope or Full computer access',verification:'Inspect target before and after input'},
+ {id:'browser',name:'Internet and signed-in browser',available:browserAvailable,operations:['research','tabs','forms','downloads','uploads'],permission:'Active task; manual sign-in; review sensitive submissions',verification:'DOM inspection and downloaded file checks',reason:browserAvailable?undefined:'Microsoft Edge is required'},
+ {id:'artifacts',name:'Documents and creative output',available:true,operations:['docx','pdf','xlsx','pptx','html','md','csv','svg line/bar/pie chart'],permission:'Writable task folder',verification:'Format generation, read-back and SHA-256; charts pass a self-contained SVG check; inspect preview before delivery'},
+ {id:'coding',name:'Coding, builds and troubleshooting',available:true,operations:['read','edit','diff','backup','restore','PowerShell','build','test'],permission:'Routine commands within task; review other commands',verification:'Exit status, logs and artifact checks'},
+ {id:'games',name:'Game workshop',available:true,operations:['discover Steam games','create tModLoader mod','build','isolated server test','logs','binary backup','restore'],permission:'Task and selected game/project; restore review',verification:'Game build version, build logs, isolated test and backup hashes',reason:gameTitles.length?'Detected: '+gameTitles.join(', '):'Discover installed games to select an adapter'},
+ {id:'adapters',name:'Reviewed tool adapters',available:true,operations:['propose manifest','activate exact hash','run approved executable'],permission:'Explicit local activation review; executable requests reviewed',verification:'Manifest and executable hash pinning'},
+ // Provider readiness belongs to the authenticated service. The desktop calls
+ // this host-only list directly, without the assistant's service-status merge.
+ {id:'discord',name:'Discord automation',available:false,operations:[],permission:'Deferred',verification:'No automated Discord account integration'},
+ ];}
