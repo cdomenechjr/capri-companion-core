@@ -125,7 +125,10 @@ export class ExtensionHub {
   private contexts=new WeakMap<HubContext,ContextEntry>();private entries=new Set<ContextEntry>();
   private skills:SkillRegistry;private agents?:RuntimeAgents;private contacts:ReturnType<typeof createContactsModule>;private security?:SecurityTools;
   private contactScopes=new Map<string,HubContext>();
+  // Global policy changes fence every binding; registry edits fence only their
+  // validated skill identity, including failed or uncertain writes across awaits.
   private skillGeneration=0;private skillMutations=0;
+  private skillScopes=new Map<string,{generation:number;pending:number;unconfirmed:boolean}>();
   private scheduler?:SecurityScheduler;private initialized=false;private closed=false;private stopping?:Promise<HubStopReport>;
   private closing?:Promise<void>;
   private codex?:CodexRuntimeConnection;
@@ -302,12 +305,21 @@ export class ExtensionHub {
   async selectSkills(input:{text:string;limit?:number},handle:HubContext){const request=z.object({text:z.string().min(1).max(4000),limit:z.number().int().min(1).max(8).optional()}).strict().parse(input);
     const result=await this.skills.select(request,await this.skillContext(handle));this.current(handle);return result;}
   async skillGuidance(ids:readonly string[],handle:HubContext,requestText?:string){const result=await this.skills.guidance(z.array(IdSchema).max(3).parse(ids),{...await this.skillContext(handle),...(requestText===undefined?{}:{requestText})});this.current(handle);return result;}
+  private skillFence(ids:readonly string[]){
+    const fence={global:this.skillGeneration,skills:[...new Set(ids.map(id=>IdSchema.parse(id)))].map(id=>({id,generation:this.skillScopes.get(id)?.generation??0}))};
+    this.assertSkillFence(fence);return fence;
+  }
+  private assertSkillFence(fence:{global:number;skills:{id:string;generation:number}[]}){
+    if(this.skillMutations||fence.global!==this.skillGeneration||fence.skills.some(({id,generation})=>{
+      const current=this.skillScopes.get(id);return current?.pending||current?.unconfirmed||(current?.generation??0)!==generation;
+    }))throw new ExtensionHubError('unavailable');
+  }
   /** Host-only task binding; never exposed as an HTTP/model action. */
   async bindSkillExecution(ids:readonly string[],runId:string,handle:HubContext,availableOnly=false):Promise<SkillExecutionBinding[]>{
-    const generation=this.skillGeneration;if(this.skillMutations)throw new ExtensionHubError('unavailable');
+    const requested=z.array(IdSchema).max(3).parse(ids),fence=this.skillFence(requested);
     const ctx=this.current(handle);if(ctx.authority!=='task'||!ctx.taskId)throw new ExtensionHubError('forbidden');
-    const guidance=availableOnly?await this.skills.bindingGuidance(z.array(IdSchema).max(3).parse(ids),await this.skillContext(handle)):await this.skillGuidance(ids,handle);this.current(handle);
-    if(this.skillMutations||generation!==this.skillGeneration)throw new ExtensionHubError('unavailable');
+    const guidance=availableOnly?await this.skills.bindingGuidance(requested,await this.skillContext(handle)):await this.skillGuidance(requested,handle);this.current(handle);
+    this.assertSkillFence(fence);
     return guidance.map(skill=>SkillExecutionBindingSchema.parse({taskId:ctx.taskId,runId,sessionEpoch:ctx.privacyEpoch,
       skillId:skill.skillId,version:skill.version,manifestSha256:skill.manifestSha256,requiredChecks:skill.requiredChecks,
       ...('unavailableChecks' in skill&&skill.unavailableChecks?{unavailableChecks:skill.unavailableChecks}:{})}));
@@ -324,14 +336,14 @@ export class ExtensionHub {
   /** Cheap producer-boundary guard: never enqueue another capability probe into
    * the host operation whose effect is about to dispatch. */
   async guardSkillExecution(bindings:readonly SkillExecutionBinding[],handle:HubContext){
-    const generation=this.skillGeneration;if(this.skillMutations)throw new ExtensionHubError('unavailable');
+    const fence=this.skillFence(bindings.map(binding=>binding.skillId));
     const ctx=this.current(handle),settings=await this.readSettings();this.current(handle);
     for(const binding of bindings){
       if(ctx.authority!=='task'||ctx.taskId!==binding.taskId||ctx.privacyEpoch!==binding.sessionEpoch)throw new ExtensionHubError('forbidden');
       await this.skills.assertExecutionReview(binding,{now:this.options.clock(),enabled:settings.skills.enabled,privateSession:ctx.privateSession,localOnly:ctx.localOnly});
       this.current(handle);
     }
-    if(this.skillMutations||generation!==this.skillGeneration)throw new ExtensionHubError('unavailable');
+    this.assertSkillFence(fence);
   }
   async overview(feature:'skills'|'security'|'contacts'|'agents',handle:HubContext):Promise<unknown>{
     const ctx=this.current(handle);if(ctx.authority!=='trusted-ui')throw new ExtensionHubError('forbidden');
@@ -547,18 +559,27 @@ export class ExtensionHub {
     }).catch(()=>this.receipt(feature,action,request,'unconfirmed',true));
   }
   private async skillAction(action:string,request:ExtensionAction,handle:HubContext):Promise<ActionReceipt>{
-    const ctx=this.current(handle);let result:SkillMutation|{ok:true};
+    const ctx=this.current(handle);let result:SkillMutation|{ok:true}|undefined;
     if(action==='list'){empty.parse(request.input);await this.skills.list(await this.skillContext(handle));return {...this.receipt('skills',action,request),effect:'none'};}
-    this.skillGeneration++;this.skillMutations++;
-    try{
-    if(action==='draft'||action==='update-draft')result=await (action==='draft'?this.skills.createDraft(request.input,ctx):this.skills.updateDraft(request.input,ctx));
-    else if(action==='review'){const value=z.object({skillId:IdSchema,manifestSha256:Sha256Schema}).strict().parse(request.input);result=await this.skills.review(value.skillId,value,ctx);}
-    else if(['revoke','save-draft','discard-draft'].includes(action)){const {skillId}=z.object({skillId:IdSchema}).strict().parse(request.input);
-      result=action==='revoke'?await this.skills.revoke(skillId,ctx):action==='save-draft'?await this.skills.saveDraft(skillId,ctx):await this.skills.discardDraft(skillId,ctx);}
+    let skillId:string,mutate:()=>Promise<SkillMutation|{ok:true}>;
+    if(action==='draft'||action==='update-draft'){const value=SkillDraftInputSchema.parse(request.input);skillId=value.id;
+      mutate=()=>action==='draft'?this.skills.createDraft(value,ctx):this.skills.updateDraft(value,ctx);}
+    else if(action==='review'){const value=z.object({skillId:IdSchema,manifestSha256:Sha256Schema}).strict().parse(request.input);skillId=value.skillId;mutate=()=>this.skills.review(skillId,value,ctx);}
+    else if(['revoke','save-draft','discard-draft'].includes(action)){({skillId}=z.object({skillId:IdSchema}).strict().parse(request.input));
+      mutate=()=>action==='revoke'?this.skills.revoke(skillId,ctx):action==='save-draft'?this.skills.saveDraft(skillId,ctx):this.skills.discardDraft(skillId,ctx);}
     else return this.receipt('skills',action,request,'unsupported');
+    const scope=this.skillScopes.get(skillId)??{generation:0,pending:0,unconfirmed:false};this.skillScopes.set(skillId,scope);scope.generation++;scope.pending++;
+    try{
+    result=await mutate();
     if(!result.ok&&(result.reason==='cancelled'||result.reason==='closed'))return {...this.receipt('skills',action,request),outcome:'cancelled',effect:'none',error:{code:'cancelled',message:'The skill session ended.',retry:'never'}};
     return result.ok?this.receipt('skills',action,request):this.receipt('skills',action,request,result.reason==='unconfirmed'?'unconfirmed':result.reason==='conflict'?'conflict':result.reason==='forbidden'?'forbidden':'invalid-request',result.reason==='unconfirmed');
-    }finally{this.skillMutations--;this.skillGeneration++;}
+    }finally{
+      scope.pending--;scope.generation++;
+      // An uncertain same-skill write needs an explicit trusted review/readback.
+      // Never clear its fence just because an unrelated operation has settled.
+      if(!result||!result.ok&&result.reason==='unconfirmed')scope.unconfirmed=true;
+      else if(result.ok&&!scope.pending&&(action==='review'||action==='revoke'))scope.unconfirmed=false;
+    }
   }
   async tickSecurity(handle:HubContext):Promise<string>{
     const ctx=this.current(handle);if(this.options.profile!=='user')return 'non-user-profile';
