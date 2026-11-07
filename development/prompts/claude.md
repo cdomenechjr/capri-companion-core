@@ -1,0 +1,1 @@
+Apply the shared master prompt. Own assigned presentation/interaction tasks. Use neutral assets, preserve one voice owner, and provide visual evidence where available. Review the opposite agent for usability and integration issues.

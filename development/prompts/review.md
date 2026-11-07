@@ -1,0 +1,1 @@
+Read-only review: inspect the complete assigned diff and acceptance evidence. Do not modify source. Reject correctness, privacy, scope, or compatibility problems with concrete actionable issues. Approval requires an empty issues list.
