@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "repo": ".",
+  "developmentRoot": "..",
+  "stateDir": "../capri-core-runtime/coordinator",
+  "worktreeRoot": "../capri-core-worktrees",
+  "profileRoot": "../capri-core-profiles",
+  "referenceRoot": "../references/mit-reference-not-included",
+  "candidateBranch": "codex/candidate",
+  "tasksFile": "development/tasks.json",
+  "prompts": {
+    "master": "development/prompts/master.md",
+    "codex": "development/prompts/codex.md",
+    "claude": "development/prompts/claude.md",
+    "review": "development/prompts/review.md"
+  },
+  "checks": [
+    {
+      "id": "typecheck",
+      "command": "node",
+      "args": [
+        "node_modules/typescript/bin/tsc",
+        "--noEmit"
+      ]
+    },
+    {
+      "id": "test",
+      "command": "node",
+      "args": [
+        "scripts/public-test.mjs"
+      ],
+      "timeoutMs": 1200000
+    },
+    {
+      "id": "build",
+      "command": "node",
+      "args": [
+        "scripts/public-build.mjs"
+      ]
+    }
+  ],
+  "agents": {
+    "codex": {
+      "command": "codex"
+    },
+    "claude": {
+      "command": "claude"
+    }
+  },
+  "continuous": false,
+  "timeoutMs": 3600000,
+  "maxRepairAttempts": 1,
+  "pollMs": 30000,
+  "maxProposalsPerCycle": 2,
+  "maxQueuedTasks": 12,
+  "proposalAllowedPaths": [
+    "src/",
+    "tests/"
+  ],
+  "operatorAllowedPaths": [
+    "src/",
+    "tests/"
+  ],
+  "roadmapFile": "development/ROADMAP.md"
+}

@@ -1,0 +1,15 @@
+import type {WorkerResult,ReviewResult} from './types';
+
+export function classifyFailure(text:string):'quota'|'auth'|'permission'|'crash'{if(/(?:usage|rate)[ -]?limit|quota|credits? (?:exhausted|depleted)|limit (?:reached|exceeded)|too many requests|usage_limit_reached|rate_limit_exceeded/i.test(text))return 'quota';if(/(?:not|isn't) (?:logged|signed) in|authentication (?:failed|required)|invalid (?:api )?key|please (?:log|sign) in|unauthorized|auth_required/i.test(text))return 'auth';if(/permission.*(?:denied|not allowed|required)|tool.*not allowed|sandbox.*(?:denied|blocked)/i.test(text))return 'permission';return 'crash';}
+export function jsonObject(text:string):any{const clean=text.trim().replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,'');return JSON.parse(clean);}
+export function workerResult(value:any):WorkerResult{if(!value||!['completed','blocked'].includes(value.status)||typeof value.summary!=='string'||typeof value.handoff!=='string'||['changedFiles','tests','limitations'].some(k=>!Array.isArray(value[k])||value[k].some((v:any)=>typeof v!=='string')))throw Error('Malformed worker result');return value;}
+export function reviewResult(value:any):ReviewResult{if(!value||typeof value.approved!=='boolean'||typeof value.summary!=='string'||!Array.isArray(value.issues)||value.issues.some((v:any)=>typeof v!=='string'))throw Error('Malformed review result');if(value.approved&&value.issues.length)throw Error('Review lists unresolved issues despite approval: '+value.issues.join('\n'));return value;}
+export function operatorFeedback(value:any):string{let text:string;if(typeof value==='string')text=value;else if(value&&typeof value.feedback==='string')text=value.feedback;else if(value&&typeof value.summary==='string'&&Array.isArray(value.issues)&&value.issues.every((v:any)=>typeof v==='string'))text=[value.summary,...value.issues].join('\n');else throw Error('Feedback JSON must be a string, {feedback:string}, or {summary:string,issues:string[]}');if(!text.trim()||Buffer.byteLength(text)>64000)throw Error('Feedback must contain between 1 and 64000 bytes');return text.trim();}
+export class JsonLines{
+ private buffer='';malformed=0;
+ constructor(readonly onRecord:(record:any)=>void,readonly maxLine=1024*1024){}
+ push(chunk:string){this.buffer+=chunk;if(this.buffer.length>this.maxLine&&!this.buffer.includes('\n')){this.buffer='';this.malformed++;return;}let next:number;while((next=this.buffer.indexOf('\n'))>=0){const line=this.buffer.slice(0,next);this.buffer=this.buffer.slice(next+1);this.line(line);}}
+ end(){if(this.buffer.trim())this.line(this.buffer);this.buffer='';}
+ private line(line:string){if(!line.trim())return;if(line.length>this.maxLine){this.malformed++;return;}try{this.onRecord(JSON.parse(line));}catch{this.malformed++;}}
+}
+export function extractClaudeResult(records:any[]){const final=records.findLast(v=>v.type==='result');if(!final)throw Error('Claude returned no result record');if(final.is_error)throw Error(final.result||final.errors?.join('\n')||'Claude run failed');return final.structured_output??(typeof final.result==='string'?jsonObject(final.result):final.result);}
