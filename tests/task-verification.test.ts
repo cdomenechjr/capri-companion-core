@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtemp,mkdir,readFile,writeFile,copyFile,realpath,rm,link,truncate} from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import {randomBytes} from 'node:crypto';
+import {randomBytes,createHash} from 'node:crypto';
 import {Store} from '../src/server/store';
 import {Assistant} from '../src/server/assistant';
 import {HostTools} from '../src/server/host';
@@ -12,7 +12,7 @@ import {defaults} from '../src/shared';
 import {createExtensionHub,hubRecordKinds,type HubHostContext,type HubContext} from '../src/extensions/hub';
 import {defaultExtensionSettings} from '../src/extensions/contracts';
 import {resolveSkillHostFacts,skillRecordKinds,builtInSkill,skillManifestSha256} from '../src/extensions/skills';
-import {skillEvidenceKind,fileWriteEvidenceKind,observeSkillProof} from '../src/extensions/skill-verification';
+import {skillEvidenceKind,fileWriteEvidenceKind,observeSkillProof,type SkillExecutionReceipt} from '../src/extensions/skill-verification';
 
 const done=(text='Done.')=>({output:[{type:'message',content:[{type:'output_text',text}]}]});
 const call=(name:string,args:any,id='produce-1')=>({output:[{type:'function_call',name,arguments:JSON.stringify(args),call_id:id}]});
@@ -38,6 +38,14 @@ async function fixture(options:{handlers?:string[];privateSession?:boolean;image
   const run=async(responses:any[],text='Create a markdown document',id='task-1')=>{let index=0;ai.call=async endpoint=>{requests.push(endpoint);const response=responses[index++];if(typeof response==='function')return response();return response??done();};await ai.chat(text,!!options.privateSession,id);await ai.jobs.get(id);return store.get('task',id);};
   return {store,host,hub,ai,events,workspace,artifact,run,requests,source:()=>source,setEpoch:(value:string)=>{epoch=value;},
     async close(){await ai.shutdown();host.close();await hub.close();await store.close();await rm(directory,{recursive:true,force:true});}};
+}
+function holdUnrelatedSkill(f:Awaited<ReturnType<typeof fixture>>){
+  let enter!:()=>void,release!:()=>void;const entered=new Promise<void>(resolve=>{enter=resolve;}),gate=new Promise<void>(resolve=>{release=resolve;}),put=f.store.put.bind(f.store);
+  f.store.put=async(kind,row)=>{if(kind===skillRecordKinds.draft&&row.id==='unrelated-b'){enter();await gate;}return put(kind,row);};
+  const signal=new AbortController().signal,ui=f.hub.context(()=>({authority:'trusted-ui',signal,privateSession:false,localOnly:false,privacyEpoch:'neutral-ui-epoch'}));
+  const pending=f.hub.dispatch('skills','draft',{requestId:'unrelated-b-draft',input:{id:'unrelated-b',name:'Unrelated B',description:'A separate neutral workflow.',
+    recipe:{summary:'Create the chosen artifact.',keywords:['unrelated'],tools:['create_artifact'],steps:['Create the requested artifact.'],verify:['Read back its actual file.'],checks:['artifact-readback']}}},ui);
+  return {entered,release,pending,ui};
 }
 
 test('ordinary document and research questions answer/store/emit with ready skills on or off, without claiming verified workflows',async()=>{
@@ -89,6 +97,96 @@ test('fresh zero-outcome document planning executes real writer and verifies its
     assert.equal(receipts[0].receipt.callId,'produce-1');assert.equal(receipts[0].receipt.binding.taskId,'task-1');
     assert.equal(f.events.filter(e=>e.state==='success').length,1);
   }finally{await f.close();}
+});
+
+test('skill scopes: an unrelated pending draft allows one actual artifact write and verified completion',async()=>{
+  const f=await fixture(),unrelated=holdUnrelatedSkill(f);let writes=0;const tool=f.ai.tool.bind(f.ai);f.ai.tool=async(name,...args)=>{if(name==='create_artifact')writes++;return tool(name,...args);};
+  try{
+    await unrelated.entered;const task=await f.run([call('create_artifact',f.artifact),call('create_artifact',f.artifact,'cached-write'),done('Saved memo.md.')]);
+    assert.equal(task?.status,'completed');assert.equal(task?.taskVerified,true);assert.equal(writes,1);
+    assert.match(await readFile(path.join(f.workspace,'memo.md'),'utf8'),/Neutral test content/);assert.equal((await f.store.list('artifact')).length,1);
+    const receipts=await f.store.list(skillEvidenceKind);assert.equal(receipts.length,1);assert.equal(receipts[0].receipt.callId,'produce-1');assert.equal(receipts[0].receipt.binding.skillId,'document-artifacts');
+    assert.equal(f.events.filter(event=>event.state==='success').length,1);unrelated.release();assert.equal((await unrelated.pending).outcome,'completed');
+  }finally{unrelated.release();await unrelated.pending;await f.close();}
+});
+
+test('skill scopes: Resume with unrelated B pending reuses the actual artifact receipt without replay',async()=>{
+  const f=await fixture(),unrelated=holdUnrelatedSkill(f);let writes=0;const tool=f.ai.tool.bind(f.ai);f.ai.tool=async(name,...args)=>{if(name==='create_artifact')writes++;return tool(name,...args);};
+  try{
+    await unrelated.entered;const paused=await f.run([call('create_artifact',f.artifact),{output:[]}]);
+    assert.equal(paused?.status,'paused');assert.match(paused?.error,/No final response/);const receipt=paused?.checkpoint.skillExecution.receipts[0];assert.ok(receipt.id);
+    assert.match(await readFile(path.join(f.workspace,'memo.md'),'utf8'),/Neutral test content/);let turns=0;
+    f.ai.call=async()=>++turns===1?call('create_artifact',f.artifact,'resume-cached'):done('The original artifact was read back.');
+    await f.ai.resume('task-1');await f.ai.jobs.get('task-1');const completed=await f.store.get('task','task-1');
+    assert.equal(completed?.status,'completed');assert.equal(completed?.taskVerified,true);assert.equal(writes,1);assert.equal((await f.store.list('artifact')).length,1);
+    const receipts=await f.store.list(skillEvidenceKind);assert.equal(receipts.length,1);assert.deepEqual(receipts[0].receipt,receipt);assert.equal(f.events.filter(event=>event.state==='success').length,1);
+  }finally{unrelated.release();await unrelated.pending;await f.close();}
+});
+
+test('skill scopes: B completing across the producer guard read permits one verified artifact with its original bytes and receipt',async()=>{
+  const f=await fixture(),unrelated=holdUnrelatedSkill(f);let writes=0,hold=false,crossed=false;
+  let original:SkillExecutionReceipt|undefined;
+  const get=f.store.get.bind(f.store),guard=f.hub.guardSkillExecution.bind(f.hub),tool=f.ai.tool.bind(f.ai);
+  f.hub.guardSkillExecution=async(...args)=>{if(!crossed)hold=true;return guard(...args);};
+  f.store.get=async(kind,id)=>{
+    if(hold&&kind===hubRecordKinds.settings){hold=false;crossed=true;unrelated.release();assert.equal((await unrelated.pending).outcome,'completed');}
+    return get(kind,id);
+  };
+  f.ai.tool=async(name,...args)=>{if(name==='create_artifact')writes++;return tool(name,...args);};
+  try{
+    await unrelated.entered;const task=await f.run([call('create_artifact',f.artifact),async()=>{
+      // Capture the first producer's receipt before cached execution and final
+      // verification. Successful completion deliberately clears the checkpoint.
+      original=structuredClone((await f.store.list(skillEvidenceKind))[0]?.receipt);assert.ok(original);
+      return call('create_artifact',f.artifact,'cached-write');
+    },done('Saved memo.md.')]);
+    assert.equal(crossed,true);assert.equal(writes,1);assert.equal(task?.status,'completed');assert.equal(task?.taskVerified,true);
+    const bytes=await readFile(path.join(f.workspace,'memo.md')),rows=await f.store.list('artifact'),receipts=await f.store.list(skillEvidenceKind);
+    assert.match(bytes.toString('utf8'),/Neutral test content/);assert.equal(rows.length,1);assert.equal(receipts.length,1);
+    assert.ok(original);assert.deepEqual(receipts[0].receipt,original);
+    assert.equal(original.callId,'produce-1');assert.equal(original.binding.taskId,'task-1');assert.equal(original.binding.skillId,'document-artifacts');
+    assert.equal(original.proof.sha256,createHash('sha256').update(bytes).digest('hex'));assert.equal(original.proof.bytes,bytes.length);
+    assert.equal(original.proof.rowId,rows[0].id);assert.equal(f.events.filter(event=>event.state==='success').length,1);
+  }finally{unrelated.release();await unrelated.pending;await f.close();}
+});
+
+test('skill scopes: bound A revocation at the producer boundary with B pending prevents the artifact write',async()=>{
+  const f=await fixture(),unrelated=holdUnrelatedSkill(f),tool=f.ai.tool.bind(f.ai);let attempts=0;
+  f.ai.tool=async(name,...args)=>{
+    if(name==='create_artifact'){
+      attempts++;assert.equal((await f.hub.dispatch('skills','revoke',{requestId:'revoke-before-write',input:{skillId:'document-artifacts'}},unrelated.ui)).outcome,'completed');
+    }
+    return tool(name,...args);
+  };
+  try{
+    await unrelated.entered;const task=await f.run([call('create_artifact',f.artifact),done('A stale completion.')]);
+    assert.equal(attempts,1);assert.notEqual(task?.status,'completed');assert.equal(task?.taskVerified,false);
+    await assert.rejects(readFile(path.join(f.workspace,'memo.md')),{code:'ENOENT'});
+    assert.deepEqual(await f.store.list('artifact'),[]);assert.deepEqual(await f.store.list(skillEvidenceKind),[]);
+    assert.equal(f.events.some(event=>event.state==='success'||event.type==='message'),false);
+  }finally{unrelated.release();await unrelated.pending;await f.close();}
+});
+
+test('skill scopes: bound A revocation or uncertain review with B pending preserves its real effect and prevents replay',async()=>{
+ for(const mutation of ['revoke','uncertain-review'] as const){
+  const f=await fixture(),unrelated=holdUnrelatedSkill(f);
+  try{
+    await unrelated.entered;const task=await f.run([call('create_artifact',f.artifact),async()=>{
+      if(mutation==='revoke')assert.equal((await f.hub.dispatch('skills','revoke',{requestId:'revoke-bound-a',input:{skillId:'document-artifacts'}},unrelated.ui)).outcome,'completed');
+      else{
+        const skill=builtInSkill('document-artifacts')!,put=f.store.put.bind(f.store);let fail=true;
+        f.store.put=async(kind,row)=>{const saved=await put(kind,row);if(fail&&kind===skillRecordKinds.review&&row.id===skill.manifest.id){fail=false;throw Error('Neutral write acknowledgement failure.');}return saved;};
+        assert.equal((await f.hub.dispatch('skills','review',{requestId:'uncertain-bound-a',input:{skillId:skill.manifest.id,manifestSha256:skillManifestSha256(skill.manifest)}},unrelated.ui)).outcome,'unconfirmed');
+      }
+      return done('A stale completion.');
+    }]);
+    assert.equal(task?.status,'paused');assert.equal(task?.taskVerified,false);assert.match(await readFile(path.join(f.workspace,'memo.md'),'utf8'),/Neutral test content/);
+    const receipt=task?.checkpoint.skillExecution.receipts[0];assert.ok(receipt.id);let dispatches=0;
+    f.ai.call=async()=>{dispatches++;return call('create_artifact',f.artifact,'must-not-replay');};await f.ai.resume('task-1');await f.ai.jobs.get('task-1');
+    assert.equal((await f.store.get('task','task-1'))?.status,'paused');assert.equal(dispatches,0);assert.equal((await f.store.list('artifact')).length,1);
+    assert.deepEqual((await f.store.list(skillEvidenceKind))[0].receipt,receipt);assert.equal(f.events.some(event=>event.state==='success'||event.type==='message'),false);
+  }finally{unrelated.release();await unrelated.pending;await f.close();}
+ }
 });
 
 test('an optional context resolver throwing does not block an authorized ordinary producer or invent verification',async()=>{
@@ -160,21 +258,23 @@ test('prior-task artifact rows and receipts cannot verify another task',async()=
   }finally{await f.close();}
 });
 
-test('grant revocation, review revocation, privacy epoch and Stop prevent verified completion after a real effect',async()=>{
-  for(const boundary of ['grant','review','epoch','private','stop'] as const){
-    const f=await fixture();try{
+test('grant revocation, review revocation, privacy epoch, global disable and Stop prevent verified completion after a real effect',async()=>{
+  for(const boundary of ['grant','review','epoch','private','settings','stop'] as const){
+    const f=await fixture(),unrelated=holdUnrelatedSkill(f);try{
+      await unrelated.entered;
       const task=await f.run([call('create_artifact',f.artifact),async()=>{
         if(boundary==='grant')f.host.access.revoke('task-1');
         if(boundary==='review'){const skill=builtInSkill('document-artifacts')!;await f.store.put(skillRecordKinds.review,{id:skill.manifest.id,skillId:skill.manifest.id,version:skill.manifest.version,manifestSha256:skillManifestSha256(skill.manifest),sourceSha256:skill.manifest.sourceSha256,reviewedAt:Date.now(),revoked:true});}
         if(boundary==='epoch')f.source().privacyEpoch='session-2';
         if(boundary==='private')f.source().privateSession=true;
+        if(boundary==='settings')assert.equal((await f.hub.dispatch('skills','configure',{requestId:'disable-all-skills',input:{enabled:false}},unrelated.ui)).outcome,'completed');
         if(boundary==='stop')await f.ai.stop();
         return done('Done; do not trust this completion.');
       }]);
       assert.notEqual(task?.status,'completed',boundary);assert.equal(f.events.some(e=>e.state==='success'),false,boundary);
       assert.equal((await f.store.list('artifact')).length,1,boundary);
       assert.equal(task?.checkpoint.skillExecution.receipts.length,1,boundary);
-    }finally{await f.close();}
+    }finally{unrelated.release();await unrelated.pending;await f.close();}
   }
 });
 

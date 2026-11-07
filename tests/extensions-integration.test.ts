@@ -6,7 +6,7 @@ import os from 'node:os';
 import {ExtensionHub,createExtensionHub,ExtensionHubError,hubRecordKinds,stageAgentWorkspace,delegatedTextChanges,type ExtensionHubOptions,type HubHostContext,type HubContext} from '../src/extensions/hub';
 import {ActionReceiptSchema,ExtensionStatusSchema,defaultExtensionSettings,type CursorStatus,type ExtensionAction,type ExtensionFeatureStatus} from '../src/extensions/contracts';
 import {featureCapability,sha256} from '../src/extensions/policy';
-import {skillRecordKinds,skillToolNames,skillManifest,SkillRecipeSchema} from '../src/extensions/skills';
+import {skillRecordKinds,skillToolNames,skillManifest,SkillRecipeSchema,resolveSkillHostFacts} from '../src/extensions/skills';
 import type {DefenderObservation} from '../src/extensions/security';
 import {ContactsService,type ResolvedContact,type ContactChannelPolicy} from '../src/extensions/contacts';
 import {reviewedContactBody,type ContactProvider} from '../src/extensions/contact-providers';
@@ -339,6 +339,14 @@ async function fixture(change:Partial<ExtensionHubOptions>={},database=memory())
 const receipt=(value:unknown)=>ActionReceiptSchema.parse(value);
 const draft={id:'weekly-notes',name:'Private weekly notes',description:'Summarize a chosen notes folder.',recipe:{summary:'Summarize my notes.',keywords:['weekly','notes'],
   tools:['list_files','read_file','create_artifact'],steps:['Read the selected folder.','Create a summary artifact.'],verify:['Read back the artifact.'],checks:['artifact-readback']}};
+const scopeDraft=(id:string)=>({id,name:'Scoped artifact recipe',description:'A separate neutral artifact workflow.',recipe:{summary:'Create the chosen artifact.',keywords:['scoped'],
+  tools:['create_artifact'],steps:['Create the requested artifact.'],verify:['Read back the actual file.'],checks:['artifact-readback']}});
+const scopeFacts=async()=>resolveSkillHostFacts({capabilities:[{id:'artifacts',available:true}],tools:['create_artifact']});
+async function reviewScopeDraft(f:Awaited<ReturnType<typeof fixture>>,id:string){
+  assert.equal((await f.action('skills','draft',scopeDraft(id))).outcome,'completed');
+  const catalog=await f.hub.overview('skills',f.ui.handle) as any,entry=catalog.skills.find((skill:any)=>skill.skillId===id);assert.ok(entry);
+  assert.equal((await f.action('skills','review',{skillId:id,manifestSha256:entry.manifestSha256})).outcome,'completed');
+}
 function cursor(){const calls:string[]=[];let status:CursorStatus={state:'inactive',recoveryAvailable:false};
   const controller={status:()=>({...status}),recover:async()=>{calls.push('recover');return {...status};},stop:async()=>{calls.push('stop');status={state:'inactive',recoveryAvailable:true};return {...status};},
     enable:async()=>{calls.push('enable');status={state:'active',recoveryAvailable:true};return {...status};},updateEnvironment:async()=>({...status})};
@@ -453,6 +461,107 @@ test('a privacy boundary during skill lookup prevents a late draft from being re
     f.ui.source.privateSession=true;f.ui.source.privacyEpoch='epoch-2';gate.resolve();
     assert.notEqual((await action).outcome,'completed');assert.equal(db.writes.some(w=>w.kind===skillRecordKinds.draft),false);
   }finally{gate.resolve();await f.hub.close();}
+});
+
+test('skill scopes: an unrelated held draft does not block a reviewed binding or producer guard',async()=>{
+  const db=memory(),put=db.store.put,entered=deferred(),gate=deferred();let hold=false,pending:Promise<unknown>|undefined;
+  db.store.put=async(kind,value)=>{if(hold&&kind===skillRecordKinds.draft&&value.id==='unrelated-b'){hold=false;entered.resolve();await gate.promise;}return put(kind,value);};
+  const f=await fixture({skillFacts:scopeFacts},db),task=f.context({authority:'task',taskId:'scope-task'});
+  try{
+    await f.action('skills','configure',{enabled:true});const binding=await f.hub.bindSkillExecution(['document-artifacts'],'scope-run',task.handle);assert.equal(binding.length,1);
+    hold=true;pending=f.action('skills','draft',scopeDraft('unrelated-b'));await entered.promise;
+    await f.hub.guardSkillExecution(binding,task.handle);assert.deepEqual(await f.hub.bindSkillExecution(['document-artifacts'],'scope-run',task.handle),binding);
+    gate.resolve();assert.equal((await pending as any).outcome,'completed');await f.hub.guardSkillExecution(binding,task.handle);
+  }finally{gate.resolve();await pending;await f.hub.close();}
+});
+
+test('skill scopes: unrelated completion or unconfirmed readback across an awaited A check leaves A valid',async()=>{
+  for(const operation of ['bind','guard'] as const)for(const outcome of ['completed','unconfirmed'] as const){
+    const db=memory(),get=db.store.get,put=db.store.put,entered=deferred(),gate=deferred();let hold=false,written=false,failReadback=outcome==='unconfirmed';
+    db.store.get=async(kind,id)=>{if(hold&&kind===hubRecordKinds.settings){hold=false;entered.resolve();await gate.promise;}
+      if(written&&failReadback&&kind===skillRecordKinds.draft&&id==='unrelated-b'){failReadback=false;return undefined;}return get(kind,id);};
+    db.store.put=async(kind,value)=>{const row=await put(kind,value);if(kind===skillRecordKinds.draft&&value.id==='unrelated-b')written=true;return row;};
+    const f=await fixture({skillFacts:scopeFacts},db),task=f.context({authority:'task',taskId:'scope-task'});
+    try{
+      await f.action('skills','configure',{enabled:true});const binding=await f.hub.bindSkillExecution(['document-artifacts'],'scope-run',task.handle);assert.equal(binding.length,1);
+      hold=true;const checking=operation==='bind'?f.hub.bindSkillExecution(['document-artifacts'],'scope-run',task.handle):f.hub.guardSkillExecution(binding,task.handle);await entered.promise;
+      assert.equal((await f.action('skills','draft',scopeDraft('unrelated-b'))).outcome,outcome);gate.resolve();const checked=await checking;
+      if(operation==='bind')assert.deepEqual(checked,binding);await f.hub.guardSkillExecution(binding,task.handle);
+      if(outcome==='unconfirmed')await assert.rejects(f.hub.bindSkillExecution(['unrelated-b'],'other-run',task.handle),e=>e instanceof ExtensionHubError&&e.code==='unavailable');
+    }finally{gate.resolve();await f.hub.close();}
+  }
+});
+
+test('skill scopes: changing B blocks A+B while A alone stays usable before and after the mutation',async()=>{
+  const db=memory(),put=db.store.put,entered=deferred(),gate=deferred();let hold=false,pending:Promise<unknown>|undefined;
+  db.store.put=async(kind,value)=>{if(hold&&kind===skillRecordKinds.draft&&value.id==='bound-b'){hold=false;entered.resolve();await gate.promise;}return put(kind,value);};
+  const f=await fixture({skillFacts:scopeFacts},db),task=f.context({authority:'task',taskId:'scope-task'});
+  try{
+    await f.action('skills','configure',{enabled:true});await reviewScopeDraft(f,'bound-b');
+    const a=await f.hub.bindSkillExecution(['document-artifacts'],'scope-run',task.handle),both=await f.hub.bindSkillExecution(['document-artifacts','bound-b'],'scope-run',task.handle);assert.equal(both.length,2);
+    hold=true;pending=f.action('skills','update-draft',{...scopeDraft('bound-b'),description:'Changed B source.'});await entered.promise;
+    await f.hub.guardSkillExecution(a,task.handle);await assert.rejects(f.hub.guardSkillExecution(both,task.handle),e=>e instanceof ExtensionHubError&&e.code==='unavailable');
+    gate.resolve();assert.equal((await pending as any).outcome,'completed');await f.hub.guardSkillExecution(a,task.handle);await assert.rejects(f.hub.guardSkillExecution(both,task.handle));
+  }finally{gate.resolve();await pending;await f.hub.close();}
+});
+
+test('skill scopes: same-skill revocation still invalidates a guard spanning its mutation',async()=>{
+  const db=memory(),get=db.store.get,entered=deferred(),gate=deferred();let hold=false;
+  db.store.get=async(kind,id)=>{if(hold&&kind===hubRecordKinds.settings){hold=false;entered.resolve();await gate.promise;}return get(kind,id);};
+  const f=await fixture({skillFacts:scopeFacts},db),task=f.context({authority:'task',taskId:'scope-task'});
+  try{
+    await f.action('skills','configure',{enabled:true});const bindings=await f.hub.bindSkillExecution(['document-artifacts'],'scope-run',task.handle);
+    hold=true;const checked=assert.rejects(f.hub.guardSkillExecution(bindings,task.handle));await entered.promise;
+    assert.equal((await f.action('skills','revoke',{skillId:'document-artifacts'})).outcome,'completed');gate.resolve();await checked;
+    await assert.rejects(f.hub.assertSkillExecution(bindings[0],task.handle));
+  }finally{gate.resolve();await f.hub.close();}
+});
+
+test('skill scopes: a failed same-skill review still invalidates an overlapping guard',async()=>{
+  const db=memory(),get=db.store.get,entered=deferred(),gate=deferred();let hold=false;
+  db.store.get=async(kind,id)=>{if(hold&&kind===hubRecordKinds.settings){hold=false;entered.resolve();await gate.promise;}return get(kind,id);};
+  const f=await fixture({skillFacts:scopeFacts},db),task=f.context({authority:'task',taskId:'scope-task'});
+  try{
+    await f.action('skills','configure',{enabled:true});const bindings=await f.hub.bindSkillExecution(['document-artifacts'],'scope-run',task.handle);
+    hold=true;const checked=assert.rejects(f.hub.guardSkillExecution(bindings,task.handle),e=>e instanceof ExtensionHubError&&e.code==='unavailable');await entered.promise;
+    assert.equal((await f.action('skills','review',{skillId:'document-artifacts',manifestSha256:'0'.repeat(64)})).outcome,'rejected');gate.resolve();await checked;
+    // A fresh check must still read the real current review; the failed request
+    // is never evidence that the overlapping check was safe.
+    await f.hub.guardSkillExecution(bindings,task.handle);
+  }finally{gate.resolve();await f.hub.close();}
+});
+
+test('skill scopes: unconfirmed or thrown A persistence stays blocked until an explicit confirmed review',async()=>{
+ for(const failure of ['readback','throw'] as const){
+  const db=memory(),get=db.store.get,put=db.store.put;let failReadback=false,written=false,throwAfterWrite=false;
+  db.store.put=async(kind,value)=>{const row=await put(kind,value);if(kind===skillRecordKinds.review&&value.id==='bound-a'){
+    written=true;if(throwAfterWrite){throwAfterWrite=false;throw Error('Neutral persistence failure after write.');}
+  }return row;};
+  db.store.get=async(kind,id)=>{if(failReadback&&written&&kind===skillRecordKinds.review&&id==='bound-a'){failReadback=false;return undefined;}return get(kind,id);};
+  const f=await fixture({skillFacts:scopeFacts},db),task=f.context({authority:'task',taskId:'scope-task'});
+  try{
+    await f.action('skills','configure',{enabled:true});await reviewScopeDraft(f,'bound-a');const bindings=await f.hub.bindSkillExecution(['bound-a'],'scope-run',task.handle);assert.equal(bindings.length,1);
+    written=false;failReadback=failure==='readback';throwAfterWrite=failure==='throw';
+    assert.equal((await f.action('skills','review',{skillId:'bound-a',manifestSha256:bindings[0].manifestSha256})).outcome,'unconfirmed');
+    await assert.rejects(f.hub.guardSkillExecution(bindings,task.handle));await assert.rejects(f.hub.bindSkillExecution(['bound-a'],'scope-run',task.handle));
+    const unrelated=await f.hub.bindSkillExecution(['document-artifacts'],'scope-run',task.handle);assert.equal(unrelated.length,1);await f.hub.guardSkillExecution(unrelated,task.handle);
+    assert.equal((await f.action('skills','review',{skillId:'bound-a',manifestSha256:bindings[0].manifestSha256})).outcome,'completed');await f.hub.guardSkillExecution(bindings,task.handle);
+  }finally{await f.hub.close();}
+ }
+});
+
+test('skill scopes: global disable/re-enable still invalidates an overlapping check while unrelated B is pending',async()=>{
+  const db=memory(),get=db.store.get,put=db.store.put,entered=deferred(),gate=deferred(),draftEntered=deferred(),draftGate=deferred();let hold=false,pending:Promise<unknown>|undefined;
+  db.store.get=async(kind,id)=>{if(hold&&kind===hubRecordKinds.settings){hold=false;entered.resolve();await gate.promise;}return get(kind,id);};
+  db.store.put=async(kind,value)=>{if(kind===skillRecordKinds.draft&&value.id==='unrelated-b'){draftEntered.resolve();await draftGate.promise;}return put(kind,value);};
+  const f=await fixture({skillFacts:scopeFacts},db),task=f.context({authority:'task',taskId:'scope-task'});
+  try{
+    await f.action('skills','configure',{enabled:true});const bindings=await f.hub.bindSkillExecution(['document-artifacts'],'scope-run',task.handle);
+    pending=f.action('skills','draft',scopeDraft('unrelated-b'));await draftEntered.promise;
+    hold=true;const checked=assert.rejects(f.hub.guardSkillExecution(bindings,task.handle),e=>e instanceof ExtensionHubError&&e.code==='unavailable');await entered.promise;
+    await f.action('skills','configure',{enabled:false});await f.action('skills','configure',{enabled:true});gate.resolve();await checked;
+    await f.hub.guardSkillExecution(bindings,task.handle);
+  }finally{gate.resolve();draftGate.resolve();await pending;await f.hub.close();}
 });
 
 test('security jobs use actual correlated module evidence, deduplicate in-flight work, and Stop keeps uncertain effects',async()=>{
