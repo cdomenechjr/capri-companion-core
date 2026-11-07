@@ -2,8 +2,8 @@
   "version": 1,
   "status": "exported",
   "policy": "reviewed-mit-public-core-v1",
-  "reviewManifestSha256": "39ff170a0c916b5a452b330cd1b4600b5223b788a2d71ab3007d6bae5581389e",
-  "sourceSelectionSha256": "47a8f3ee7ab6aa7733b5775dda515afc126827728123ac0f9b0b3341eea9d39e",
+  "reviewManifestSha256": "72fa8803c3c6cc8b18981833d7d99f7c0a73b09935740c18df4ea957f7a3e42a",
+  "sourceSelectionSha256": "260ce6e341dcdd92535d49dc73abb01914a29434a27f8488b2316585a6a6e6ee",
   "publicBuild": {
     "mode": "environment",
     "entry": "scripts/build.mjs"
@@ -68,8 +68,8 @@
     },
     {
       "path": "PUBLIC-EXPORT-REJECTIONS.json",
-      "bytes": 5920,
-      "sha256": "8f114a0d577ae42ea2327a6988f7f1fa792bae7cc85353ae74bec3cd56641b11",
+      "bytes": 6012,
+      "sha256": "e2380b83a7394d66719300055a090ff7d2266e825e811b1f0b5c3c2c56133e59",
       "origin": "generated",
       "license": "MIT"
     },
@@ -213,10 +213,10 @@
     {
       "path": "package.json",
       "bytes": 2034,
-      "sha256": "fb5f4d4178c3c436fc2264a8b9dd28085ec8dd37a9197fd93da80dfcc8f1078b",
+      "sha256": "80c80ad56224123ef33b48cea9a75ac10d25a5816171bcfa6af0e9bef4816c3d",
       "origin": "sanitized",
       "license": "MIT",
-      "sourceSha256": "b376554459ed0338c50d649378f353518e9171ca94e64b3459a192a89fd93168",
+      "sourceSha256": "7f0e697ec06aa132c7ecab8a249d6d9bfd9e41f419cdf80c14c1516fa87d8239",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -754,11 +754,11 @@
     },
     {
       "path": "src/extensions/hub.ts",
-      "bytes": 66215,
-      "sha256": "232f7b4c4355b3378d759b4ad6ed7b985ec6627fcd04c127326f55139f6befd0",
+      "bytes": 67525,
+      "sha256": "6056f026839b3597d909e48822bdc80d6af777340dd6bb00225fdae015c39e82",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "232f7b4c4355b3378d759b4ad6ed7b985ec6627fcd04c127326f55139f6befd0",
+      "sourceSha256": "6056f026839b3597d909e48822bdc80d6af777340dd6bb00225fdae015c39e82",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -1954,11 +1954,11 @@
     },
     {
       "path": "tests/extensions-integration.test.ts",
-      "bytes": 68351,
-      "sha256": "fd207ff29620e289c0b59638420b766ed0cb69066dc547bbdc047ba51a48f35f",
+      "bytes": 79071,
+      "sha256": "b78f145ebad8e53d609a80f8dde31f1cbedc47a953a8bc29433ea8cbedd01c88",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "fd207ff29620e289c0b59638420b766ed0cb69066dc547bbdc047ba51a48f35f",
+      "sourceSha256": "b78f145ebad8e53d609a80f8dde31f1cbedc47a953a8bc29433ea8cbedd01c88",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -2302,11 +2302,11 @@
     },
     {
       "path": "tests/task-verification.test.ts",
-      "bytes": 52308,
-      "sha256": "9240a6624ecd0546a4a9fc542c0350cd675ca64e1be563f2e99219f2cf880b91",
+      "bytes": 61596,
+      "sha256": "8126454eedcaf162fef806aca9ca96c7d7c7de45aa266381c2dcd38981dc3331",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "9240a6624ecd0546a4a9fc542c0350cd675ca64e1be563f2e99219f2cf880b91",
+      "sourceSha256": "8126454eedcaf162fef806aca9ca96c7d7c7de45aa266381c2dcd38981dc3331",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -2390,7 +2390,7 @@
       "sha256": "3076fd6910fcde14edcd49349f25ecf7e9b572dd665cf2517011364c460a3527",
       "origin": "sanitized",
       "license": "MIT",
-      "sourceSha256": "59777f32482b9ab52c48ac17d1fa891776977462e79d6367a553c3eca979221f"
+      "sourceSha256": "a0a9b13f2ffff098acc4acd4bf5cc7615706886c03a3669071fae25ab50e3f03"
     },
     {
       "path": "tools/coordinator/engine.ts",
@@ -2513,7 +2513,7 @@
       ]
     }
   ],
-  "contentSha256": "1536aedb314e7cf078f9080ac822712165af2c8bd515bcbcb48810943c232613",
+  "contentSha256": "5b2c45136149ab4550a0afbebde3ca442402008c36bc3f84775c7c06fb33beab",
   "limitations": [
     "No source code, build, dependency install, provider, or platform test was executed by the exporter.",
     "MIT/provenance declarations and the public-build branch require human review; content scans are not a proof of absence of secrets."

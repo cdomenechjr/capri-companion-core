@@ -32,6 +32,10 @@
       "reason": "not_reviewed"
     },
     {
+      "path": "NVIDIA Corporation",
+      "reason": "outside_source_allowlist"
+    },
+    {
       "path": "README.md",
       "reason": "outside_source_allowlist"
     },

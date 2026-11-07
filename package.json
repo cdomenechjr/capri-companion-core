@@ -1,6 +1,6 @@
 {
   "name": "capri-companion-core",
-  "version": "0.7.0-dev.1",
+  "version": "0.7.0-dev.2",
   "private": false,
   "description": "An extensible desktop companion core with neutral generated visuals",
   "main": "dist/main.cjs",
