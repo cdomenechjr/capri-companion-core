@@ -1,0 +1,9 @@
+export type AccessMode='scoped'|'full';
+export type TaskPhase='plan'|'execute'|'verify'|'recover'|'report';
+export type TaskPermission={taskId:string;request:string;mode:AccessMode;createdAt:number;revoked:boolean};
+export type Verification={method:string;passed:boolean;details?:string};
+export type Artifact={path:string;format:string;bytes:number;sha256:string;preview?:string;verification:Verification[]};
+export type Capability={id:string;name:string;available:boolean;operations:string[];permission:string;verification:string;reason?:string};
+export type Checkpoint={input:any[];executed:[string,any][];actions:number;elapsedMs:number;phase:TaskPhase;sources:any[]};
+export class TaskPaused extends Error {constructor(message='Task paused. Resume when ready.'){super(message);}}
+export const taskLimits={actions:100,milliseconds:30*60*1000};
