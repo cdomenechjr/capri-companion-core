@@ -1,0 +1,76 @@
+{
+  "name": "capri-companion-core",
+  "version": "0.7.0-dev.1",
+  "private": false,
+  "description": "An extensible desktop companion core with neutral generated visuals",
+  "main": "dist/main.cjs",
+  "author": "Capri Companion Core contributors",
+  "license": "MIT",
+  "scripts": {
+    "build": "node scripts/public-build.mjs",
+    "check": "node node_modules/typescript/bin/tsc --noEmit",
+    "test": "node scripts/public-test.mjs",
+    "start": "electron .",
+    "dev": "node scripts/public-build.mjs && electron .",
+    "server": "node dist/cloud.cjs",
+    "coordinator": "node --import tsx tools/coordinator/cli.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.318",
+    "@fastify/static": "^8.2.0",
+    "@fastify/websocket": "^11.2.0",
+    "diff": "^8.0.2",
+    "docx": "^9.14.0",
+    "exceljs": "^4.4.0",
+    "fastify": "^5.6.0",
+    "jszip": "^3.10.2",
+    "lucide-react": "^0.468.0",
+    "pdf-lib": "^1.17.1",
+    "pg": "^8.16.0",
+    "playwright-core": "^1.64.1",
+    "pptxgenjs": "^4.0.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "sherpa-onnx-node": "^2.0.0",
+    "sql.js": "^1.13.0",
+    "ws": "^8.18.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/diff": "^7.0.0",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@types/sql.js": "^1.4.9",
+    "@types/ws": "^8.18.0",
+    "electron": "^45.0.0",
+    "electron-builder": "^26.0.0",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.1.0"
+  },
+  "build": {
+    "appId": "org.capri.companion.core",
+    "productName": "Capri Companion Core",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/sql.js/dist/*.wasm"
+    ],
+    "win": {
+      "target": "nsis",
+      "signExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

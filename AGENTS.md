@@ -1,0 +1,1 @@
+Read development/prompts/master.md and the assigned task. Edit only assigned files. Do not access installed profiles, secrets, private art, live paid services, or external accounts. The operator owns dependencies and publishing; the coordinator owns state, commits, reviews, and integration. Use isolated profiles and public builds. Preserve notices and test meaningful behavior.

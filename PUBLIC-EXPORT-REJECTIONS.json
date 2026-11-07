@@ -1,0 +1,271 @@
+{
+  "version": 1,
+  "status": "accepted",
+  "rejections": [],
+  "excluded": [
+    {
+      "path": ".dockerignore",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": ".env.example",
+      "reason": "private_or_generated_path"
+    },
+    {
+      "path": ".git",
+      "reason": "private_or_generated_path"
+    },
+    {
+      "path": ".gitignore",
+      "reason": "outside_source_allowlist"
+    },
+    {
+      "path": "AGENTS.md",
+      "reason": "outside_source_allowlist"
+    },
+    {
+      "path": "CLAUDE.md",
+      "reason": "outside_source_allowlist"
+    },
+    {
+      "path": "Dockerfile",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "README.md",
+      "reason": "outside_source_allowlist"
+    },
+    {
+      "path": "README.txt",
+      "reason": "outside_source_allowlist"
+    },
+    {
+      "path": "android",
+      "reason": "outside_source_allowlist"
+    },
+    {
+      "path": "assets",
+      "reason": "private_artwork_path"
+    },
+    {
+      "path": "deploy",
+      "reason": "outside_source_allowlist"
+    },
+    {
+      "path": "development",
+      "reason": "outside_source_allowlist"
+    },
+    {
+      "path": "dist",
+      "reason": "private_or_generated_path"
+    },
+    {
+      "path": "models",
+      "reason": "excluded_alias"
+    },
+    {
+      "path": "native/bin",
+      "reason": "private_or_generated_path"
+    },
+    {
+      "path": "native/obj",
+      "reason": "private_or_generated_path"
+    },
+    {
+      "path": "native/publish",
+      "reason": "private_or_generated_path"
+    },
+    {
+      "path": "node_modules",
+      "reason": "private_or_generated_path"
+    },
+    {
+      "path": "scripts/audit-designed-voice.ts",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/audition-voices.ts",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/avatar.tsx",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/check-character.ts",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/check-designed-speech.ts",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/check-local.ts",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/check-qwen-voice.ts",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/check-voice-pacing.ts",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/check-voice-stop.ts",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/check-wake.ts",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/development.cmd",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/development.mjs",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/development.ps1",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/evaluate-browser.mjs",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/evaluate-candidate.mjs",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/export-handoffs.mjs",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/icon.mjs",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/launch-candidate.cmd",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/launch-candidate.mjs",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/operator-launchers.test.mjs",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/pin-candidate.mjs",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/prepare-character.py",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/prepare-wave07.mjs",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/preview-companion.tsx",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/profile-check.mjs",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/qa-agents.mjs",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/qa-motion.mjs",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/qa-studio.mjs",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/qa-voice.mjs",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/redesign-copy.mjs",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/release-attestation.mjs",
+      "reason": "private_or_generated_path"
+    },
+    {
+      "path": "scripts/release-attestation.test.mjs",
+      "reason": "private_or_generated_path"
+    },
+    {
+      "path": "scripts/release-broker.mjs",
+      "reason": "private_or_generated_path"
+    },
+    {
+      "path": "scripts/release-broker.test.mjs",
+      "reason": "private_or_generated_path"
+    },
+    {
+      "path": "scripts/release-feed.mjs",
+      "reason": "private_or_generated_path"
+    },
+    {
+      "path": "scripts/release-feed.test.mjs",
+      "reason": "private_or_generated_path"
+    },
+    {
+      "path": "scripts/release-integrity.mjs",
+      "reason": "private_or_generated_path"
+    },
+    {
+      "path": "scripts/release-integrity.test.mjs",
+      "reason": "private_or_generated_path"
+    },
+    {
+      "path": "scripts/release-key.mjs",
+      "reason": "private_or_generated_path"
+    },
+    {
+      "path": "scripts/release-key.test.mjs",
+      "reason": "private_or_generated_path"
+    },
+    {
+      "path": "scripts/setup-local-models.ps1",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/setup-quality-voice.ps1",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/try-designed-voice.ts",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/verify-agency.ts",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/verify-browser.ts",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "scripts/verify-candidate.mjs",
+      "reason": "not_reviewed"
+    },
+    {
+      "path": "tools/coordinator/README.md",
+      "reason": "not_reviewed"
+    }
+  ]
+}

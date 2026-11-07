@@ -1,0 +1,117 @@
+Capri / Project Capricorn is a character from Cyberpunk: Edgerunners 2.
+Character and animation rights belong to their respective rights holders.
+
+The user supplied https://lachydotmcg.github.io/capri-desktop/ as an explicit
+character and animation reference. Source cutouts and chip artwork were
+obtained from https://github.com/lachydotmcg/capri-desktop at commit
+44bbd9c517485e2860b81d2ce94f656d633a548c. No application code from that project
+was copied into this implementation.
+
+Original animation excerpts are attributed to Cyberpunk: Edgerunners 2 and
+their respective rights holders. Reference GIF pages:
+https://tenor.com/view/capri-cyberpunk2-cyberpunk-2-edgerunners-2-cyberpunk-edgerunners-2-capricorn-gif-5541033963201170705
+https://tenor.com/view/cyberpunk-cyberpunk-edgerunners-cyberpunk-2077-capri-capricorn-gif-13976675652919264408
+
+This build is a personal fan companion, not an official CD PROJEKT RED,
+TRIGGER, Netflix, or performer product. No license to third-party artwork or
+voices is represented by this application's source-code ownership.
+
+LOCAL MODELS
+sherpa-onnx inference uses Apache-2.0:
+https://github.com/k2-fsa/sherpa-onnx
+Kokoro English v0_19 / Kokoro-82M uses Apache-2.0; retain its bundled LICENSE:
+https://huggingface.co/hexgrad/Kokoro-82M
+https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models
+Whisper tiny.en is an ONNX export of MIT-licensed Whisper:
+https://github.com/openai/whisper
+https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models
+The English speech lexicon has a local correction adding the common word "or".
+Ollama and Qwen3.5:4b are installed separately and are not bundled:
+https://github.com/ollama/ollama
+https://ollama.com/library/qwen3.5
+https://huggingface.co/Qwen
+Retain upstream model cards and license terms if redistributing model weights.
+No actor recordings or cloned performer embeddings are included.
+
+Pocket TTS model weights by Kyutai are distributed under CC BY 4.0. This build
+uses the sherpa-onnx ONNX export and int8 quantization dated January 26, 2026:
+https://huggingface.co/kyutai/pocket-tts
+https://creativecommons.org/licenses/by/4.0/
+https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models
+The model's code is MIT-licensed: https://github.com/kyutai-labs/pocket-tts
+Attribution and code-license copies are included in models/designed/.
+No endorsement is implied. The designed voice reference was created using
+Qwen3-TTS VoiceDesign from an original written description. It was not cloned
+from a performer recording. Voice provenance is saved alongside the reference.
+https://github.com/QwenLM/Qwen3-TTS
+Qwen3-TTS itself is not bundled or required for runtime speech.
+
+The user supplied these additional references for studying delivery, timing,
+poses and expressions. The complete videos are not included in the installer:
+https://www.youtube.com/watch?v=5wGdjjwoDbY
+https://www.youtube.com/watch?v=Nli_SZ-DBco&t=10s
+The app's silent MP4 loops are conversions of the previously attributed GIFs.
+
+QWEN QUALITY RUNTIME (optional local download)
+Qwen3-TTS-12Hz-1.7B-Base: Apache License 2.0.
+https://github.com/QwenLM/Qwen3-TTS
+GGUF conversion: ggml-org/Qwen3-TTS-12Hz-1.7B-Base-GGUF, revision ca27d74bc954b73dadab5b71ca265d87fc861a7c.
+llama.cpp b11669: MIT license, https://github.com/ggml-org/llama.cpp.
+The fixed download hashes are recorded in scripts/setup-quality-voice.ps1.
+The voice reference is the original synthetic Designed A, not a performer recording.
+
+REFERENCE DESKTOP INTEGRATION 0.4.0
+Sprite strips, cursor perching and desktop interaction reference:
+https://github.com/lachydotmcg/capri-desktop/tree/d2876694bce524e37d89ea1bb043f34e431486e5
+Release v0.4.0 by lachydotmcg. Thirteen PNG strips retain the original frame
+counts, rates and proportions. Their SHA-256 hashes and source revision are in
+assets/character/sprites/manifest.json. The desktop interaction behavior has
+been adapted into Project Capricorn's Electron controller and native monitor.
+Retain attribution when sharing this personal fan integration.
+
+ELEVENLABS VOICE
+The optional hosted speech adapter uses the reference project's voice ID,
+MkTSSXNgnBULS6ek4pon, with eleven_multilingual_v2. It requires the user's own
+ElevenLabs account and voice access. No API key or ElevenLabs voice weights are
+bundled. The optional offline pack contains only generated fixed phrases.
+https://elevenlabs.io/docs/help-center/product/voices/voice-cloning/can-i-export-my-voice-clones
+
+0.5.0 additions: Playwright Core (Apache-2.0), docx (MIT), ExcelJS (MIT), PptxGenJS (MIT), pdf-lib (MIT), JSZip (MIT option). Packages retain their bundled licenses. tModLoader references and game files remain in the user's installation; they are not redistributed.
+
+0.7 SOURCE AND OPTIONAL RUNTIMES
+The new companion core and adapters are independently implemented. The newer
+lachydotmcg/capri-desktop revision 648f329fb4a06f1eac2fb653cc3cbdddbe0e7667
+uses PolyForm Noncommercial 1.0.0 and is behavior reference only; no code or
+assets from that revision are imported into the MIT public core.
+https://github.com/lachydotmcg/capri-desktop/blob/648f329fb4a06f1eac2fb653cc3cbdddbe0e7667/LICENSE.md
+
+The optional cursor pack is pinned to komishouko011-maker/capri-animated-cursors
+revision cf9b06d4fb0b8c8a22e1e6b9200f0f665cdca21d. No explicit license file
+was found. ANI files stay in a private import cache and are excluded from
+public source and redistributed packages. Source metadata is not a license.
+https://github.com/komishouko011-maker/capri-animated-cursors
+
+Silero VAD: MIT, copyright 2020-present Silero Team. The local ONNX export is
+provided by k2-fsa/sherpa-onnx; retain the model's license and provenance.
+https://github.com/snakers4/silero-vad
+https://k2-fsa.github.io/sherpa/onnx/vad/silero-vad.html
+
+Optional Parakeet TDT 0.6b v3: NVIDIA, CC BY 4.0. This personal preview uses
+k2-fsa's ONNX export and int8 quantization rather than the original NeMo files.
+No endorsement is implied. Weights are excluded from the public core; retain
+the model card, attribution, license link and conversion provenance locally.
+https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3
+https://creativecommons.org/licenses/by/4.0/
+https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models
+
+Claude Agent SDK 0.3.318 (@anthropic-ai/claude-agent-sdk) is copyright
+Anthropic PBC and retains its own license/legal agreements. The MIT license
+for our adapter does not relicense Anthropic software or model services.
+Runtime API delegation remains disabled until approved API configuration
+and a budget exist. Existing Claude Code development authentication is separate.
+https://github.com/anthropics/claude-agent-sdk-typescript
+https://code.claude.com/docs/en/legal-and-compliance
+
+Gmail, Twilio, WhatsApp, Microsoft Defender and Codex are optional integrations
+with their own service and software terms. This project does not supply
+provider credentials, purchase services or transfer proprietary model rights.

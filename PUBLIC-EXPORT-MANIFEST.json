@@ -1,0 +1,2521 @@
+{
+  "version": 1,
+  "status": "exported",
+  "policy": "reviewed-mit-public-core-v1",
+  "reviewManifestSha256": "39ff170a0c916b5a452b330cd1b4600b5223b788a2d71ab3007d6bae5581389e",
+  "sourceSelectionSha256": "47a8f3ee7ab6aa7733b5775dda515afc126827728123ac0f9b0b3341eea9d39e",
+  "publicBuild": {
+    "mode": "environment",
+    "entry": "scripts/build.mjs"
+  },
+  "files": [
+    {
+      "path": ".env.example",
+      "bytes": 202,
+      "sha256": "a0a244cf293380c398c9bccf838ebf404d886595e83c51add33be556ac0a0a4e",
+      "origin": "generated",
+      "license": "MIT"
+    },
+    {
+      "path": ".gitattributes",
+      "bytes": 8,
+      "sha256": "705fd4d6451a31d36b3df7de96f83f30ac976c9b4a6d1e51671d8e2f33e2d0da",
+      "origin": "sanitized",
+      "license": "MIT",
+      "sourceSha256": "44401e8789b90eae9fdb2d366eac50172880f8b89f209dfd385adb4fba2701ba"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 333,
+      "sha256": "7385b523386cf9b82e167f60f96a2308805d61667114ae97a5d7a9c4530b990b",
+      "origin": "generated",
+      "license": "MIT"
+    },
+    {
+      "path": "AGENTS.md",
+      "bytes": 380,
+      "sha256": "091ca4b3b35cf1d22dcd85ed978acee4ae0bad32ad6ac9f9465c00cc37409736",
+      "origin": "generated",
+      "license": "MIT"
+    },
+    {
+      "path": "CLAUDE.md",
+      "bytes": 78,
+      "sha256": "0657cfec042539147d75d3d167ef05843946d65de9436babe6678ad0704c445b",
+      "origin": "generated",
+      "license": "MIT"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "bytes": 1072,
+      "sha256": "d58e2f365bdcce208ec45f24a48e03817f345c0ceb2cfbf6ff1b25369cffbc02",
+      "origin": "generated",
+      "license": "MIT"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 1090,
+      "sha256": "1c0b40df2875365ed501c67f0d551b15736cd45d07ebf8d1da075b8bb40ac794",
+      "origin": "generated",
+      "license": "MIT"
+    },
+    {
+      "path": "PRIVACY.md",
+      "bytes": 1141,
+      "sha256": "3b196862c5c07258ffaa81ae48292555d4a4aac033b50c73ae7f46a49f8c710b",
+      "origin": "generated",
+      "license": "MIT"
+    },
+    {
+      "path": "PUBLIC-EXPORT-REJECTIONS.json",
+      "bytes": 5920,
+      "sha256": "8f114a0d577ae42ea2327a6988f7f1fa792bae7cc85353ae74bec3cd56641b11",
+      "origin": "generated",
+      "license": "MIT"
+    },
+    {
+      "path": "README.md",
+      "bytes": 4911,
+      "sha256": "bab067fc4395b712a3597a1e8c653d1a53176d54ae3ab58a7c7936823e98c9d8",
+      "origin": "generated",
+      "license": "MIT"
+    },
+    {
+      "path": "THIRD-PARTY-NOTICES.txt",
+      "bytes": 7070,
+      "sha256": "2b5eccdfcba41aa3940a0b41dffbe2d7a5e99c2de3e037f0bb4b8d7ba9a1185d",
+      "origin": "reviewed",
+      "license": "notice",
+      "sourceSha256": "2b5eccdfcba41aa3940a0b41dffbe2d7a5e99c2de3e037f0bb4b8d7ba9a1185d"
+    },
+    {
+      "path": "development/ROADMAP.md",
+      "bytes": 193,
+      "sha256": "f31a4c96bc71114ed1611d70900e1c92aafe69e0a70b2959bc7fa4ec5f5b36cb",
+      "origin": "generated",
+      "license": "MIT"
+    },
+    {
+      "path": "development/UPSTREAM-LICENSE.txt",
+      "bytes": 1269,
+      "sha256": "d726b9d028939b1298525fd3d9ab69dbb487df8ae83d1c346e6ded712dfc4fa2",
+      "origin": "reviewed",
+      "license": "notice",
+      "sourceSha256": "d726b9d028939b1298525fd3d9ab69dbb487df8ae83d1c346e6ded712dfc4fa2"
+    },
+    {
+      "path": "development/prompts/claude.md",
+      "bytes": 232,
+      "sha256": "6ca985d55d2fa27d87fc1084e0dae2483a6549f3f2f0019dd61456104c8a8566",
+      "origin": "generated",
+      "license": "MIT"
+    },
+    {
+      "path": "development/prompts/codex.md",
+      "bytes": 190,
+      "sha256": "5c4560aae825a5bdced0bf56028b3783fd30334e8377297060ff66a7f3d0079d",
+      "origin": "generated",
+      "license": "MIT"
+    },
+    {
+      "path": "development/prompts/master.md",
+      "bytes": 710,
+      "sha256": "8749f3edc641e81b7aae41aff4f8844ae42056454aa469a132b372835f38c277",
+      "origin": "generated",
+      "license": "MIT"
+    },
+    {
+      "path": "development/prompts/review.md",
+      "bytes": 235,
+      "sha256": "84263db9e4f02c429df44a8be97f3a4ec6ea86308c2c513cb3c16d665191584c",
+      "origin": "generated",
+      "license": "MIT"
+    },
+    {
+      "path": "development/tasks.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "origin": "generated",
+      "license": "MIT"
+    },
+    {
+      "path": "native/AgencyWindows.cs",
+      "bytes": 7509,
+      "sha256": "f41fae2112b4aab5b8aa6151e4147f30fa1365b3bb881329819da8c47355b341",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "f41fae2112b4aab5b8aa6151e4147f30fa1365b3bb881329819da8c47355b341",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "native/Capri.Windows.csproj",
+      "bytes": 442,
+      "sha256": "ede3126ccfe30b531390e38d55b564ad0aaa08e5027827e377809f38362ba9bb",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "ede3126ccfe30b531390e38d55b564ad0aaa08e5027827e377809f38362ba9bb",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "native/Cursor.cs",
+      "bytes": 14510,
+      "sha256": "ccca8f1f22a421b05099b970de093cf128e18d86ce8f22c819400c3861fb88da",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "ccca8f1f22a421b05099b970de093cf128e18d86ce8f22c819400c3861fb88da",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "native/Presence.cs",
+      "bytes": 4245,
+      "sha256": "5d4a3c4a38754f14eaf0ed63902655d6fbe9c0f299db2b0d37847db14d190af7",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "5d4a3c4a38754f14eaf0ed63902655d6fbe9c0f299db2b0d37847db14d190af7",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "native/Program.cs",
+      "bytes": 7566,
+      "sha256": "3577f8f909e34efd6658f4bd74a5f24f3a2d3cae9dfefa440d6caf3a4793ccf2",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "3577f8f909e34efd6658f4bd74a5f24f3a2d3cae9dfefa440d6caf3a4793ccf2",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "native/Security.cs",
+      "bytes": 15317,
+      "sha256": "018b66bc1e91781f65f5bb323c156a626e7fc85e19bde24449339484ce31eea9",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "018b66bc1e91781f65f5bb323c156a626e7fc85e19bde24449339484ce31eea9",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "package.json",
+      "bytes": 2034,
+      "sha256": "fb5f4d4178c3c436fc2264a8b9dd28085ec8dd37a9197fd93da80dfcc8f1078b",
+      "origin": "sanitized",
+      "license": "MIT",
+      "sourceSha256": "b376554459ed0338c50d649378f353518e9171ca94e64b3459a192a89fd93168",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "bytes": 186591,
+      "sha256": "45b5ea6310eb769cd3ab2f82539b630938901f962d7e899a32a327492779120b",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "45b5ea6310eb769cd3ab2f82539b630938901f962d7e899a32a327492779120b",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "pnpm-workspace.yaml",
+      "bytes": 151,
+      "sha256": "ba8ecedc3f7964e3cac7b25d4d895e6197b5903ea2fceee509953ad3806f53bd",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "ba8ecedc3f7964e3cac7b25d4d895e6197b5903ea2fceee509953ad3806f53bd",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "scripts/benchmark-listening.mjs",
+      "bytes": 14692,
+      "sha256": "0eb7e1c6e4752ca16ea8fe315e2e9c46f4b909ba4cd2e9bfea1c9e223d333240",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "0eb7e1c6e4752ca16ea8fe315e2e9c46f4b909ba4cd2e9bfea1c9e223d333240",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "scripts/build.mjs",
+      "bytes": 15048,
+      "sha256": "0b0233268fab24d467f7c634c72c443f3e0e54b87debc4a02e1e38f2d5259c56",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "0b0233268fab24d467f7c634c72c443f3e0e54b87debc4a02e1e38f2d5259c56",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "scripts/coordinator-supervision.test.mjs",
+      "bytes": 28694,
+      "sha256": "9155cd203e935ae0f92d16566f55e8de8b369cf08ec8b64f0b0a7f2737ddfcfc",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "9155cd203e935ae0f92d16566f55e8de8b369cf08ec8b64f0b0a7f2737ddfcfc",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "scripts/export-public-core.mjs",
+      "bytes": 32992,
+      "sha256": "0f9815c698f872bf25242cb853fddb64ce4be1884172d7d44f1b0beb065dd9b4",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "0f9815c698f872bf25242cb853fddb64ce4be1884172d7d44f1b0beb065dd9b4",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "scripts/launch-candidate.ps1",
+      "bytes": 3210,
+      "sha256": "44f81b1142adc16f21c6a0d010aeb16ee9639d90e5defc20b0b0df6612ad79b7",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "44f81b1142adc16f21c6a0d010aeb16ee9639d90e5defc20b0b0df6612ad79b7",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "scripts/launch-managed-preview.cmd",
+      "bytes": 462,
+      "sha256": "243726f46089c190d521c5421c18bdb202d3461e51b44776913ba7db31cd90c2",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "243726f46089c190d521c5421c18bdb202d3461e51b44776913ba7db31cd90c2",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "scripts/launch-managed-preview.ps1",
+      "bytes": 613,
+      "sha256": "251985defbc83eccefc1887114c978be90051155c11d1ca7a4f8056feed6a487",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "251985defbc83eccefc1887114c978be90051155c11d1ca7a4f8056feed6a487",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "scripts/listening-fixtures.mjs",
+      "bytes": 21438,
+      "sha256": "52025097f7edc6f5e0d0712c22a105dbcf0f04bcf489f87d9075fb2fa3675f61",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "52025097f7edc6f5e0d0712c22a105dbcf0f04bcf489f87d9075fb2fa3675f61",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "scripts/managed-preview.mjs",
+      "bytes": 7912,
+      "sha256": "a8f71dd2b8919406682165a89715b6b035627060948ef2ad8913b63dfc71672f",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "a8f71dd2b8919406682165a89715b6b035627060948ef2ad8913b63dfc71672f",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "scripts/neutral-assets.mjs",
+      "bytes": 11574,
+      "sha256": "6b907e08592590779df04ae79a79bd49acbea5183f8bd04d9a2d903a8bc9fe62",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "6b907e08592590779df04ae79a79bd49acbea5183f8bd04d9a2d903a8bc9fe62",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "scripts/process-supervisor.test.mjs",
+      "bytes": 31018,
+      "sha256": "f66038c4a5490e4de543dd60920bff5d6967e79d51cdf52aec447b29d81b189e",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "f66038c4a5490e4de543dd60920bff5d6967e79d51cdf52aec447b29d81b189e",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "scripts/public-build.mjs",
+      "bytes": 189,
+      "sha256": "f7c3418b2fd825852970d5802666b62c90f910b40093b982f01c6d8ce03a8101",
+      "origin": "generated",
+      "license": "MIT"
+    },
+    {
+      "path": "scripts/public-core-sanitize.mjs",
+      "bytes": 11461,
+      "sha256": "d4139043cbc015a6528126cfd57158cefa290ec9dccaf7a05dfe3ec0d7ec1f00",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "d4139043cbc015a6528126cfd57158cefa290ec9dccaf7a05dfe3ec0d7ec1f00",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "scripts/public-test.mjs",
+      "bytes": 1450,
+      "sha256": "b0ffa201d4348425645646ed9a11d70aa344251c84d851ebb209e5adc4f63c54",
+      "origin": "generated",
+      "license": "MIT"
+    },
+    {
+      "path": "scripts/sign-release.mjs",
+      "bytes": 12219,
+      "sha256": "d75b074540174a50ee48cacb3e1f87aa6fa0acd969cac68fa0f8a662e0e4bf1d",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "d75b074540174a50ee48cacb3e1f87aa6fa0acd969cac68fa0f8a662e0e4bf1d",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "scripts/update-launcher.mjs",
+      "bytes": 11011,
+      "sha256": "fb4b4766f96fc62b34311994b090fcd3ec6788b3d61a58ee2cd152b105a8adcc",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "fb4b4766f96fc62b34311994b090fcd3ec6788b3d61a58ee2cd152b105a8adcc",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "scripts/update-launcher.ps1",
+      "bytes": 1840,
+      "sha256": "ed6ff6b9c72a9d0d35da8cc88cbe3a5d2ab75c9f46c1da047707636759dc2c37",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "ed6ff6b9c72a9d0d35da8cc88cbe3a5d2ab75c9f46c1da047707636759dc2c37",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/agency-tools.ts",
+      "bytes": 3324,
+      "sha256": "2b49304e238d4617de0dc09a1b93e4833178a301af7a3a0eb21368a4b7d4716e",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "2b49304e238d4617de0dc09a1b93e4833178a301af7a3a0eb21368a4b7d4716e",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/agency.ts",
+      "bytes": 848,
+      "sha256": "82683fa93b9ac2e3c12bb5b0a72ec6c04c0dab610ac105040dc6353acceb7073",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "82683fa93b9ac2e3c12bb5b0a72ec6c04c0dab610ac105040dc6353acceb7073",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/character.ts",
+      "bytes": 7823,
+      "sha256": "e4e9d595a669dfe7a7b17ec7803dc8e65e7c6becdb45ad738c2062bee2791cdd",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "e4e9d595a669dfe7a7b17ec7803dc8e65e7c6becdb45ad738c2062bee2791cdd",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/desktop/agency-probe.ts",
+      "bytes": 4615,
+      "sha256": "bbe87195a0f8c6c945a43cbb062a1714f65e649c2dae7e2f735de0f10b652fb9",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "bbe87195a0f8c6c945a43cbb062a1714f65e649c2dae7e2f735de0f10b652fb9",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/desktop/asset-packs.ts",
+      "bytes": 27419,
+      "sha256": "b90bf9876bdb26f2add3817d622b3a6857453371b60e588d34a8f0dae5a546a8",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "b90bf9876bdb26f2add3817d622b3a6857453371b60e588d34a8f0dae5a546a8",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/desktop/audio-permissions.ts",
+      "bytes": 546,
+      "sha256": "e8e20b7e35556c82eb9c4caadb6d9cfe6eade02743c0e510bc8c0e04a7d4617d",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "e8e20b7e35556c82eb9c4caadb6d9cfe6eade02743c0e510bc8c0e04a7d4617d",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/desktop/companion-bounds.ts",
+      "bytes": 664,
+      "sha256": "0da6afc7cf9f54fcbeba6fd8145e27d76b957b393f941ccecc9bfa9cec06965d",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "0da6afc7cf9f54fcbeba6fd8145e27d76b957b393f941ccecc9bfa9cec06965d",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/desktop/companion-controller.ts",
+      "bytes": 8938,
+      "sha256": "34f8b6399e81326b39c04d8e89b0a519d98d788703d3a46cbaa4f6812798fea3",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "34f8b6399e81326b39c04d8e89b0a519d98d788703d3a46cbaa4f6812798fea3",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/desktop/companion-state.ts",
+      "bytes": 2805,
+      "sha256": "87641036dff2b7bddbcd148d09a9e180ecdd1ef5017bf2c2667dc8ae99371fd5",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "87641036dff2b7bddbcd148d09a9e180ecdd1ef5017bf2c2667dc8ae99371fd5",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/desktop/development-activity.ts",
+      "bytes": 1636,
+      "sha256": "7648ac01526a08e1f5e56b93d28e38cea9fdd9143b71adc5d9ded39011dc0948",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "7648ac01526a08e1f5e56b93d28e38cea9fdd9143b71adc5d9ded39011dc0948",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/desktop/links.ts",
+      "bytes": 258,
+      "sha256": "ae02ec95fd81aff8ca59c7e1d67c163e5884997b2a52103f2d8867404b456260",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "ae02ec95fd81aff8ca59c7e1d67c163e5884997b2a52103f2d8867404b456260",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/desktop/local-engine.ts",
+      "bytes": 1278,
+      "sha256": "66b9828051feffa3847826472adb93f59a72c57a168c4f1db551e56f5cc2d1fd",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "66b9828051feffa3847826472adb93f59a72c57a168c4f1db551e56f5cc2d1fd",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/desktop/main.ts",
+      "bytes": 62321,
+      "sha256": "f3e709658c4f773c607f49b0a8f577efec8b859f8df5e5ee90a14f9b39f17751",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "f3e709658c4f773c607f49b0a8f577efec8b859f8df5e5ee90a14f9b39f17751",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/desktop/preload.ts",
+      "bytes": 1288,
+      "sha256": "c6f71fc7a95cf8425dfe984c2fe84c5dd1ca74e214e2b623d12e0493222ab831",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "c6f71fc7a95cf8425dfe984c2fe84c5dd1ca74e214e2b623d12e0493222ab831",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/desktop/runtime-profile.ts",
+      "bytes": 9030,
+      "sha256": "a4c76d213477e2042d587a979e5ae08edd9446d0a034e9ef5ff7e4b36610f8e2",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "a4c76d213477e2042d587a979e5ae08edd9446d0a034e9ef5ff7e4b36610f8e2",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/desktop/shortcuts.ts",
+      "bytes": 1445,
+      "sha256": "f250b2182842e6600814227ad8baa40eda4ffabe358a096c1e76db36c28bd668",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "f250b2182842e6600814227ad8baa40eda4ffabe358a096c1e76db36c28bd668",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/desktop/transport.ts",
+      "bytes": 854,
+      "sha256": "8b7f5592dfe6e5dc558f8770103886c6a0cd144f6bc86d35e14aa08bb01d5a54",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "8b7f5592dfe6e5dc558f8770103886c6a0cd144f6bc86d35e14aa08bb01d5a54",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/desktop/update-maintenance.ts",
+      "bytes": 12409,
+      "sha256": "42670360ba846125542bfe08c438d5c9dfd63d1c1e239e3b87bdb38d8fec25aa",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "42670360ba846125542bfe08c438d5c9dfd63d1c1e239e3b87bdb38d8fec25aa",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/desktop/wake-keywords.ts",
+      "bytes": 638,
+      "sha256": "901510682cd8c35960f70b7de79809033ae7916bb5e765838c93ef3741775230",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "901510682cd8c35960f70b7de79809033ae7916bb5e765838c93ef3741775230",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/development.ts",
+      "bytes": 1725,
+      "sha256": "cc9081dcaa68f495db289e406d171678c6d30162ed73535509a5f9e5e20feb28",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "cc9081dcaa68f495db289e406d171678c6d30162ed73535509a5f9e5e20feb28",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/extensions/agent-lease.ts",
+      "bytes": 36357,
+      "sha256": "bf7a14c25c122cb6f1534dc52341de9b7c84b536469b59d36fc2f3c51a62ba2a",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "bf7a14c25c122cb6f1534dc52341de9b7c84b536469b59d36fc2f3c51a62ba2a",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/extensions/agents.ts",
+      "bytes": 94464,
+      "sha256": "15a5cc33aaa137300745ccab384e70ef12a103d6599aa0575c8b2d29b920f7da",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "15a5cc33aaa137300745ccab384e70ef12a103d6599aa0575c8b2d29b920f7da",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/extensions/contact-providers.ts",
+      "bytes": 17605,
+      "sha256": "29302c64d3a3fd5aaceafc734f4014dd94b87caf67cf6ead176bdfcc3a244f07",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "29302c64d3a3fd5aaceafc734f4014dd94b87caf67cf6ead176bdfcc3a244f07",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/extensions/contacts.ts",
+      "bytes": 56539,
+      "sha256": "0588e02ce5c0dc75b259091f146cb4e4a4716fe50204b0a2f5a0aae581730619",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "0588e02ce5c0dc75b259091f146cb4e4a4716fe50204b0a2f5a0aae581730619",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/extensions/contracts.ts",
+      "bytes": 21854,
+      "sha256": "13d12e396ce8b23f8c8af4eac3dae0475f40cfa26b683d03a6657bc167e1099d",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "13d12e396ce8b23f8c8af4eac3dae0475f40cfa26b683d03a6657bc167e1099d",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/extensions/cursor.ts",
+      "bytes": 29810,
+      "sha256": "25900f9c9a53a0da83316d6c5394818c1c3b6ffb87aaf210c73107e871a98999",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "25900f9c9a53a0da83316d6c5394818c1c3b6ffb87aaf210c73107e871a98999",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/extensions/hub.ts",
+      "bytes": 66215,
+      "sha256": "232f7b4c4355b3378d759b4ad6ed7b985ec6627fcd04c127326f55139f6befd0",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "232f7b4c4355b3378d759b4ad6ed7b985ec6627fcd04c127326f55139f6befd0",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/extensions/managed-update-host.ts",
+      "bytes": 61270,
+      "sha256": "483ff8f3d8494e67a915728de97c4fe22b8e2dcbab059cd015402e267adfcc6e",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "483ff8f3d8494e67a915728de97c4fe22b8e2dcbab059cd015402e267adfcc6e",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/extensions/paired-android.ts",
+      "bytes": 6738,
+      "sha256": "09309d1dabcdff19a4cf0841321dce3e42611aaf4019ba9fcef592e121c6735e",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "09309d1dabcdff19a4cf0841321dce3e42611aaf4019ba9fcef592e121c6735e",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/extensions/policy.ts",
+      "bytes": 15910,
+      "sha256": "24722728c6a24a75bb0d6d4fd2ea24c0d7cf23972e8e27b660dcb212bf41cc85",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "24722728c6a24a75bb0d6d4fd2ea24c0d7cf23972e8e27b660dcb212bf41cc85",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/extensions/security.ts",
+      "bytes": 16898,
+      "sha256": "d428b70b8120cc3fca1b18059bb01f59689697c29fc1723d0fa345842f88343c",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "d428b70b8120cc3fca1b18059bb01f59689697c29fc1723d0fa345842f88343c",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/extensions/skill-verification.ts",
+      "bytes": 29262,
+      "sha256": "77efbef43a5d86aaaa6ce437bc256089ee37323d32f3c47d1d86792f32f992a2",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "77efbef43a5d86aaaa6ce437bc256089ee37323d32f3c47d1d86792f32f992a2",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/extensions/skills.ts",
+      "bytes": 53151,
+      "sha256": "415fce13ebbb577231693fe411ad605fe61923e84c3f1abe4c800fc316014632",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "415fce13ebbb577231693fe411ad605fe61923e84c3f1abe4c800fc316014632",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/extensions/speech.ts",
+      "bytes": 13152,
+      "sha256": "00a67a4cdd8ffde70a7cdf576299f001bf41033544e5dca2afc5794af531e866",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "00a67a4cdd8ffde70a7cdf576299f001bf41033544e5dca2afc5794af531e866",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/extensions/supervisor.ts",
+      "bytes": 18935,
+      "sha256": "61e93d5d0831b8d2e9ac15052c51da519afa277d770bef690b1af5dc474cdd50",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "61e93d5d0831b8d2e9ac15052c51da519afa277d770bef690b1af5dc474cdd50",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/extensions/updates.ts",
+      "bytes": 38242,
+      "sha256": "eaf3ef28b192419d34c141b368fd83f17dea0cc4a218e46bd3d376666f7ac572",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "eaf3ef28b192419d34c141b368fd83f17dea0cc4a218e46bd3d376666f7ac572",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/access.ts",
+      "bytes": 1691,
+      "sha256": "a0afa7ef1dfdbf9fee113fb9cc70f0b978626b401e915f0048d1fd93c5f8c4f2",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "a0afa7ef1dfdbf9fee113fb9cc70f0b978626b401e915f0048d1fd93c5f8c4f2",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/artifacts.ts",
+      "bytes": 8062,
+      "sha256": "2d251a520129c7d066050b83bf0f3ac1cfb4fae9de86930713180ae61bfd79d5",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "2d251a520129c7d066050b83bf0f3ac1cfb4fae9de86930713180ae61bfd79d5",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/assistant.ts",
+      "bytes": 25677,
+      "sha256": "62d7dc9f9abc3f064c86a4a71e92b2e6b6c1586216b697d3b6292214ab6ba7c7",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "62d7dc9f9abc3f064c86a4a71e92b2e6b6c1586216b697d3b6292214ab6ba7c7",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/browser.ts",
+      "bytes": 8728,
+      "sha256": "252fc2c78cdd85e9aeb1b48edaef328e0a65c173666d9743eafe48463449efc9",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "252fc2c78cdd85e9aeb1b48edaef328e0a65c173666d9743eafe48463449efc9",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/capabilities.ts",
+      "bytes": 3618,
+      "sha256": "9dfc87ac5081ab99beefe1c360234facd32047e77812514d9e950052021bb64f",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "9dfc87ac5081ab99beefe1c360234facd32047e77812514d9e950052021bb64f",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/charts.ts",
+      "bytes": 20160,
+      "sha256": "64811acc5cfab9cf5579dff394445583526d527ae43e9be1c9e8195471e0bc86",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "64811acc5cfab9cf5579dff394445583526d527ae43e9be1c9e8195471e0bc86",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/cloud.ts",
+      "bytes": 963,
+      "sha256": "142cb6cd76a63c41a0a8bd43b1e64dc8ab0fa3bce6a2999f5f26daf436e0b9f0",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "142cb6cd76a63c41a0a8bd43b1e64dc8ab0fa3bce6a2999f5f26daf436e0b9f0",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/commands.ts",
+      "bytes": 1367,
+      "sha256": "1eb99aa09bac27a1b75db1fad5636a35601ca9c4db2ba0ff01cb99c1fb8bebc1",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "1eb99aa09bac27a1b75db1fad5636a35601ca9c4db2ba0ff01cb99c1fb8bebc1",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/context.ts",
+      "bytes": 2630,
+      "sha256": "e75b730b00213c3124775c6f7c416c1869efb00c0146791e9bd928468d982c03",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "e75b730b00213c3124775c6f7c416c1869efb00c0146791e9bd928468d982c03",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/games.ts",
+      "bytes": 7719,
+      "sha256": "73f7a614f53c0e4c02cb8635da01f5d5bceac304c3f5cc1a6a580a339c279b30",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "73f7a614f53c0e4c02cb8635da01f5d5bceac304c3f5cc1a6a580a339c279b30",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/host-agency.ts",
+      "bytes": 28648,
+      "sha256": "082fdbad40d798836e5a7b580b092c5d0061e435030778c85cdb1da4536fd4e4",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "082fdbad40d798836e5a7b580b092c5d0061e435030778c85cdb1da4536fd4e4",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/host-legacy.ts",
+      "bytes": 5054,
+      "sha256": "88775d9e6aa0661f85ef3cdb4eb51f3d19c97b1cb487c7d959f22e1dab5b31f3",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "88775d9e6aa0661f85ef3cdb4eb51f3d19c97b1cb487c7d959f22e1dab5b31f3",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/host.ts",
+      "bytes": 94,
+      "sha256": "02e138a434c96bfad06b50c981d4e0142094ac142b43c3287629a5edcad19016",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "02e138a434c96bfad06b50c981d4e0142094ac142b43c3287629a5edcad19016",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/local-speech.ts",
+      "bytes": 10041,
+      "sha256": "3e202ce553cd882836fbb6f7196de717cc324f2a26be7531b29d08d70e2f9440",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "3e202ce553cd882836fbb6f7196de717cc324f2a26be7531b29d08d70e2f9440",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/policy.ts",
+      "bytes": 3254,
+      "sha256": "a3c2d7a1beb0362b440a9cbfdd1ad30ffc4c7acbb3ae3f5dfb067a484948fad0",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "a3c2d7a1beb0362b440a9cbfdd1ad30ffc4c7acbb3ae3f5dfb067a484948fad0",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/private-sessions.ts",
+      "bytes": 1543,
+      "sha256": "0b27f56f2c437df56bdebd68047b74069d27888bcdad68fa810ab8e85ddc7f1c",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "0b27f56f2c437df56bdebd68047b74069d27888bcdad68fa810ab8e85ddc7f1c",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/providers.ts",
+      "bytes": 9756,
+      "sha256": "4c96df7395493d056acefd70af33982d6ee4be7977bdf3bf7b24c7f2800ef432",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "4c96df7395493d056acefd70af33982d6ee4be7977bdf3bf7b24c7f2800ef432",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/public-page.ts",
+      "bytes": 1977,
+      "sha256": "c498dd27bd23ab86b0d9b13d372bb4426c0439960a23d6f9f7d49cacdfaa5198",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "c498dd27bd23ab86b0d9b13d372bb4426c0439960a23d6f9f7d49cacdfaa5198",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/qwen-speech.ts",
+      "bytes": 3301,
+      "sha256": "a3acc70c1e52da94cb13295b64f6afb48b1afebe750fdd632a806633c4f9336a",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "a3acc70c1e52da94cb13295b64f6afb48b1afebe750fdd632a806633c4f9336a",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/remote.ts",
+      "bytes": 5688,
+      "sha256": "692a99234f42278b0f7fb7a49fbcf719cebef5615a8c23647dfe78a1ad99c06e",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "692a99234f42278b0f7fb7a49fbcf719cebef5615a8c23647dfe78a1ad99c06e",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/search.ts",
+      "bytes": 1318,
+      "sha256": "fac26f05520a99a79761f553eea7665cc98039506e0c4c279d2be3e85bc4d3e2",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "fac26f05520a99a79761f553eea7665cc98039506e0c4c279d2be3e85bc4d3e2",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/service.ts",
+      "bytes": 57863,
+      "sha256": "53e655dc2f8e1df61975a92ba026043aea4a7a7876c8bc4e1782e75b6fd0a6e2",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "53e655dc2f8e1df61975a92ba026043aea4a7a7876c8bc4e1782e75b6fd0a6e2",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/speech-output.ts",
+      "bytes": 6651,
+      "sha256": "c9d2d51f6189a4c7108ad9cfcf36c39b8246101e24ddffa9f86dc190f21681d6",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "c9d2d51f6189a4c7108ad9cfcf36c39b8246101e24ddffa9f86dc190f21681d6",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/speech-tempo.ts",
+      "bytes": 1792,
+      "sha256": "4fbaed1777b826a1b8672709603ff51e4d3a90d89b60963bd35fb1b6c75c59a1",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "4fbaed1777b826a1b8672709603ff51e4d3a90d89b60963bd35fb1b6c75c59a1",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/store.ts",
+      "bytes": 5712,
+      "sha256": "e418c2f07b0eb636f3a9f3a1a7ab0b34c5bcb412947607c1cf750a192bcdb303",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "e418c2f07b0eb636f3a9f3a1a7ab0b34c5bcb412947607c1cf750a192bcdb303",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/server/task-runner.ts",
+      "bytes": 37876,
+      "sha256": "4f942ab9e45a12fa32919c06a43dbccc3b2a77c69ea9ddb359cac4c63332849c",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "4f942ab9e45a12fa32919c06a43dbccc3b2a77c69ea9ddb359cac4c63332849c",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/shared.ts",
+      "bytes": 8421,
+      "sha256": "ba22a764a496b290397b03d19938cb637354e7d0efee715d3dd17c66cc0db124",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "ba22a764a496b290397b03d19938cb637354e7d0efee715d3dd17c66cc0db124",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/speech-shared.ts",
+      "bytes": 697,
+      "sha256": "66bdee3ee741d0d230dbb5ffe124bf7d54df56651b7f8026c5ac8a7ff232a012",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "66bdee3ee741d0d230dbb5ffe124bf7d54df56651b7f8026c5ac8a7ff232a012",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/AgencySettings.tsx",
+      "bytes": 3616,
+      "sha256": "235e3e447351b3c1aac059890e7511d69327ab1c77fa70b1ba0abcc3d97e1b15",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "235e3e447351b3c1aac059890e7511d69327ab1c77fa70b1ba0abcc3d97e1b15",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/AgentActivity.tsx",
+      "bytes": 2791,
+      "sha256": "0244966494a65d9e548156d60abc40362d5319a3abe5ef1274ad22e3032d7570",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "0244966494a65d9e548156d60abc40362d5319a3abe5ef1274ad22e3032d7570",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/ArtifactPreview.tsx",
+      "bytes": 3057,
+      "sha256": "07c9168629784cb996dc4cd45c9f651ba4f8d443d9cc0ebea139d3fa8c3c3ada",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "07c9168629784cb996dc4cd45c9f651ba4f8d443d9cc0ebea139d3fa8c3c3ada",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/AudioSettings.tsx",
+      "bytes": 12808,
+      "sha256": "5a4d1ea2b1227acf1b8840a5a2928e973b967178ddfc01bc402577ff01257275",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "5a4d1ea2b1227acf1b8840a5a2928e973b967178ddfc01bc402577ff01257275",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/Avatar.tsx",
+      "bytes": 4166,
+      "sha256": "64203f7fae734810a5d4fa2d1392f2418822a61f60c055630426f6c09e0f56ca",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "64203f7fae734810a5d4fa2d1392f2418822a61f60c055630426f6c09e0f56ca",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/ChatSubmission.tsx",
+      "bytes": 1489,
+      "sha256": "7ef6c55e59d669b206fa5c79e5575ab08069ec12435621ea560bcb44e915eb55",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "7ef6c55e59d669b206fa5c79e5575ab08069ec12435621ea560bcb44e915eb55",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/CreativeStudio.tsx",
+      "bytes": 11004,
+      "sha256": "7548f3965dc1eb80a9a32c40ef91c1b454ea6e9dac3bbb762d0196df0c3af5ae",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "7548f3965dc1eb80a9a32c40ef91c1b454ea6e9dac3bbb762d0196df0c3af5ae",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/DesktopSettings.tsx",
+      "bytes": 7651,
+      "sha256": "03c65ca4f958fa2e796f6b9ca29cd13df8aefd365a04ac2dfe553c25d9324284",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "03c65ca4f958fa2e796f6b9ca29cd13df8aefd365a04ac2dfe553c25d9324284",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/ExtensionSettings.tsx",
+      "bytes": 60615,
+      "sha256": "8627024999f2b569a0b538bbc5f7e68d69267a7c95301d7f0a38807e5afdd2b6",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "8627024999f2b569a0b538bbc5f7e68d69267a7c95301d7f0a38807e5afdd2b6",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/ProviderSettings.tsx",
+      "bytes": 3559,
+      "sha256": "3df6177871957ab342d37743220bb5388cb143e48860785d5f1bf2d76b32ff71",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "3df6177871957ab342d37743220bb5388cb143e48860785d5f1bf2d76b32ff71",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/SpriteAvatar.tsx",
+      "bytes": 8299,
+      "sha256": "4283eef66f40df59d8d9c5fa116e6213306f5581397d0957d229c9c7150af2ba",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "4283eef66f40df59d8d9c5fa116e6213306f5581397d0957d229c9c7150af2ba",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/TranscriptCorrection.tsx",
+      "bytes": 2763,
+      "sha256": "ad1fdbf48fa7adae86815beee2bac2297159d156031b658b0edfc8d130817863",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "ad1fdbf48fa7adae86815beee2bac2297159d156031b658b0edfc8d130817863",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/agent-activity.ts",
+      "bytes": 3440,
+      "sha256": "396294d43bdd48b6a5afd6a86ab3ba37e06d6b4cd6c37a6cb4362cb3f784f93f",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "396294d43bdd48b6a5afd6a86ab3ba37e06d6b4cd6c37a6cb4362cb3f784f93f",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/android-voice.ts",
+      "bytes": 944,
+      "sha256": "08bd8c326cf9b3b04fcc494949e1d1297f4797c478c36717b45a6591fe6445e8",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "08bd8c326cf9b3b04fcc494949e1d1297f4797c478c36717b45a6591fe6445e8",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/api.ts",
+      "bytes": 5283,
+      "sha256": "2ffa268f6f95d10169233e1a48b566301ac43e652bab7b07a1c56fc30a0e85aa",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "2ffa268f6f95d10169233e1a48b566301ac43e652bab7b07a1c56fc30a0e85aa",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/asset-pack.ts",
+      "bytes": 4209,
+      "sha256": "a2a5542bcf0231f976a5b30edce7320f246faa581bcb48c8c4f550f382ac700a",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "a2a5542bcf0231f976a5b30edce7320f246faa581bcb48c8c4f550f382ac700a",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/audio-devices.ts",
+      "bytes": 1494,
+      "sha256": "ea477edd61641f47b9a6433bd4a09e27526fc025b91699dbab67300516aa218a",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "ea477edd61641f47b9a6433bd4a09e27526fc025b91699dbab67300516aa218a",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/audio.ts",
+      "bytes": 7297,
+      "sha256": "9d9c3794837068e38a2f3eedb0b851bfc3459f3afa56f78722f7203b0c4c64ad",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "9d9c3794837068e38a2f3eedb0b851bfc3459f3afa56f78722f7203b0c4c64ad",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/avatar-motion.ts",
+      "bytes": 796,
+      "sha256": "7aa5975aa1bb11d310d5a7836eb1028d628377579742ccd3a1839db53c8dca17",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "7aa5975aa1bb11d310d5a7836eb1028d628377579742ccd3a1839db53c8dca17",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/chat-submission.ts",
+      "bytes": 12754,
+      "sha256": "3763ccf7627c625a61281a83af107b241c88cc488d0dc4d24dcc1fe68aff93d5",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "3763ccf7627c625a61281a83af107b241c88cc488d0dc4d24dcc1fe68aff93d5",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/creative-brief.ts",
+      "bytes": 12144,
+      "sha256": "0d4c4607e58d33202142a7d45c428b59fa0866d29e3242d2d8d3de83f7ad085b",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "0d4c4607e58d33202142a7d45c428b59fa0866d29e3242d2d8d3de83f7ad085b",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/cyberpunk.css",
+      "bytes": 34890,
+      "sha256": "b1a4cf764ecb9af30700430211b424635bdfa0b74553b8a14413e832c5908e34",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "b1a4cf764ecb9af30700430211b424635bdfa0b74553b8a14413e832c5908e34",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/extensions-api.ts",
+      "bytes": 55152,
+      "sha256": "e9d08d82e8e6e73f9d0700e3aa3a893693d262400dc4093910d8cfcea0f1a4e3",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "e9d08d82e8e6e73f9d0700e3aa3a893693d262400dc4093910d8cfcea0f1a4e3",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/index.html",
+      "bytes": 307,
+      "sha256": "833d8e2267e53f49301f7cc394fbb91929094ef2b0beaba34f2f1bbefb53af98",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "833d8e2267e53f49301f7cc394fbb91929094ef2b0beaba34f2f1bbefb53af98",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/listening.ts",
+      "bytes": 54698,
+      "sha256": "c3da2940a02549f6390028d34b5ba7681e7639c80e0f16b1f30fd07544b2fc7b",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "c3da2940a02549f6390028d34b5ba7681e7639c80e0f16b1f30fd07544b2fc7b",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/main.tsx",
+      "bytes": 59184,
+      "sha256": "c837cadb2e0498e69ef3e8482b316f84c9b813793b86046410dc80fb49916139",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "c837cadb2e0498e69ef3e8482b316f84c9b813793b86046410dc80fb49916139",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/mic-worklet.js",
+      "bytes": 1853,
+      "sha256": "6a962c01fcda4c5776031799b18c3c2c241e6e8dddb8867676db2bb56ce14e71",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "6a962c01fcda4c5776031799b18c3c2c241e6e8dddb8867676db2bb56ce14e71",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/presentation-cues.ts",
+      "bytes": 12586,
+      "sha256": "c7d6fef7ccd6df4b16753bf3e810fdfda4d1bfe8043c72957fe2a8750e67bc23",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "c7d6fef7ccd6df4b16753bf3e810fdfda4d1bfe8043c72957fe2a8750e67bc23",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/sprite-state.ts",
+      "bytes": 9846,
+      "sha256": "a46874e8149fd3fccb17c1167538c44b6d427da2067701643bffc2ef9ed5115b",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "a46874e8149fd3fccb17c1167538c44b6d427da2067701643bffc2ef9ed5115b",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/style.css",
+      "bytes": 20993,
+      "sha256": "283d56d29e658adc009fc1db9225514bdda2e6296bdd5ff6de5f9b51263a1d91",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "283d56d29e658adc009fc1db9225514bdda2e6296bdd5ff6de5f9b51263a1d91",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/transcript-correction.ts",
+      "bytes": 13401,
+      "sha256": "409258bbb500e10f6483143e6a513d613c8977ed08273c36d4bac22ea1ac9b68",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "409258bbb500e10f6483143e6a513d613c8977ed08273c36d4bac22ea1ac9b68",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/voice-state.ts",
+      "bytes": 858,
+      "sha256": "94e09bbe1a57c0aa1131881390dacd41e19b35a2c149e454bc1a70860565f4d1",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "94e09bbe1a57c0aa1131881390dacd41e19b35a2c149e454bc1a70860565f4d1",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/ui/voice.ts",
+      "bytes": 34492,
+      "sha256": "7fd0315e7b2d23bee9690e922aa56f5a215731189c4b97e0c4ee6882287a6651",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "7fd0315e7b2d23bee9690e922aa56f5a215731189c4b97e0c4ee6882287a6651",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/version.ts",
+      "bytes": 79,
+      "sha256": "3becb69c6a19c31408fca3fcc5f063d47df1ae4e1b3c6cc12e2ac4d16693a12e",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "3becb69c6a19c31408fca3fcc5f063d47df1ae4e1b3c6cc12e2ac4d16693a12e",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/agency.test.ts",
+      "bytes": 19025,
+      "sha256": "48bec9cbda514cc89c851b89e8aaf32c24980b27b3ecbba88f1a0a127d28b80f",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "48bec9cbda514cc89c851b89e8aaf32c24980b27b3ecbba88f1a0a127d28b80f",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/agent-awareness.test.ts",
+      "bytes": 7717,
+      "sha256": "cf1c5b66d722ccd24cce3f2b74fab8379e9561a6a633e9d488c1a892d7c367cf",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "cf1c5b66d722ccd24cce3f2b74fab8379e9561a6a633e9d488c1a892d7c367cf",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/audio-devices.test.ts",
+      "bytes": 1185,
+      "sha256": "36c2d791c16c50cf29deefdb4fcf5e8cb3665dcb26f14b6a8def8cede8896358",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "36c2d791c16c50cf29deefdb4fcf5e8cb3665dcb26f14b6a8def8cede8896358",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/audio-permissions.test.ts",
+      "bytes": 964,
+      "sha256": "4873731d83df720ad537fc04b82b994e789e455918c6d064e0084f3a00bc8912",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "4873731d83df720ad537fc04b82b994e789e455918c6d064e0084f3a00bc8912",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/avatar-motion.test.ts",
+      "bytes": 1160,
+      "sha256": "62e3e09a16f4b681a8b8371bd699832daf97690e9e75271dce86fe225ebbba8a",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "62e3e09a16f4b681a8b8371bd699832daf97690e9e75271dce86fe225ebbba8a",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/character-profile.test.ts",
+      "bytes": 1961,
+      "sha256": "b353b907d0387252964eb84578cbba9abcc66581f100de0ccbc3200833785ccb",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "b353b907d0387252964eb84578cbba9abcc66581f100de0ccbc3200833785ccb",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/chart-artifacts.test.ts",
+      "bytes": 37509,
+      "sha256": "431025b564b93e4385584c6aecf452d23eb6f913a6957f361fce1c8f48a7ec40",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "431025b564b93e4385584c6aecf452d23eb6f913a6957f361fce1c8f48a7ec40",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/companion-bounds.test.ts",
+      "bytes": 693,
+      "sha256": "fcc25b45b7f2ae7ffa3715718e2c9be60b7cd45797543f77f700d18082b1e1f4",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "fcc25b45b7f2ae7ffa3715718e2c9be60b7cd45797543f77f700d18082b1e1f4",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/companion-expression.test.ts",
+      "bytes": 16366,
+      "sha256": "40a3baf9795c306804c3711c7743f08e2ce412190dfb570166a80322c29bb858",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "40a3baf9795c306804c3711c7743f08e2ce412190dfb570166a80322c29bb858",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/companion-integration.test.ts",
+      "bytes": 5197,
+      "sha256": "1cfba20cb451cf93fcee778c212a238e2c1b00bae4824c727ff52543e0c99bde",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "1cfba20cb451cf93fcee778c212a238e2c1b00bae4824c727ff52543e0c99bde",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/computer-recovery.test.ts",
+      "bytes": 13005,
+      "sha256": "5ba730547aba049228cc6510e341cb01283a6b88aa678ee99f540c7808665535",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "5ba730547aba049228cc6510e341cb01283a6b88aa678ee99f540c7808665535",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/contact-providers.test.ts",
+      "bytes": 14463,
+      "sha256": "29f65e8f093ad391bc765fd79e077c18a7fa2189c9e87ba2621307e9f826675f",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "29f65e8f093ad391bc765fd79e077c18a7fa2189c9e87ba2621307e9f826675f",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/contact-review.test.ts",
+      "bytes": 25157,
+      "sha256": "07c0ec42e45b38e4d47a18ef8a749be8eff1cfbf07420db66c2265683ec02840",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "07c0ec42e45b38e4d47a18ef8a749be8eff1cfbf07420db66c2265683ec02840",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/contacts.test.ts",
+      "bytes": 43880,
+      "sha256": "1fc5cf26ad7aaa7236be9555a8da28e6140793d8ae98bbc154e26f559cd34dbc",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "1fc5cf26ad7aaa7236be9555a8da28e6140793d8ae98bbc154e26f559cd34dbc",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/coordinator-native-output.test.ts",
+      "bytes": 9505,
+      "sha256": "70f4d74e0b88224d8b1c8c803cda20541a1c15a92852234223183bb21f2985cf",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "70f4d74e0b88224d8b1c8c803cda20541a1c15a92852234223183bb21f2985cf",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/coordinator-ownership.test.ts",
+      "bytes": 24873,
+      "sha256": "b90189fd690d39daf6eac27ea9015474d2ee013ad55456ca9df2fd16dec158ca",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "b90189fd690d39daf6eac27ea9015474d2ee013ad55456ca9df2fd16dec158ca",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/coordinator-release-version.test.ts",
+      "bytes": 21392,
+      "sha256": "96ff79f57c60fa0a38825eaf9be1a236c9411826add6e56f8028d0bceee8d8fb",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "96ff79f57c60fa0a38825eaf9be1a236c9411826add6e56f8028d0bceee8d8fb",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/coordinator-stop-intent.test.ts",
+      "bytes": 7046,
+      "sha256": "b90bb5746f5b84669749e1f516de23ce1aa9dacc64d08e4b74e0f98d3b9531ac",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "b90bb5746f5b84669749e1f516de23ce1aa9dacc64d08e4b74e0f98d3b9531ac",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/coordinator-supervision.test.ts",
+      "bytes": 19986,
+      "sha256": "05284e4ed7015099d98e12ff56e201236ed04fa94a91033bf0867c90a211cf98",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "05284e4ed7015099d98e12ff56e201236ed04fa94a91033bf0867c90a211cf98",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/coordinator.test.ts",
+      "bytes": 69115,
+      "sha256": "07b4cf66d241c703619ce389be68c4f151d3a18afeed74faa8b2dc70c2185e6d",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "07b4cf66d241c703619ce389be68c4f151d3a18afeed74faa8b2dc70c2185e6d",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/core.test.ts",
+      "bytes": 6995,
+      "sha256": "a3aeb89a0aa68234354bf1ad1d231a566b3cb62aa91dc6b6f8398872c863a899",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "a3aeb89a0aa68234354bf1ad1d231a566b3cb62aa91dc6b6f8398872c863a899",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/creative-studio.test.ts",
+      "bytes": 29008,
+      "sha256": "423806d4d68818927860d1b9687f347c0926b8cf63efec7a92ec8f3ea7e2d7fe",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "423806d4d68818927860d1b9687f347c0926b8cf63efec7a92ec8f3ea7e2d7fe",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/cursor-mode.test.ts",
+      "bytes": 26809,
+      "sha256": "622e7996a1dd73eeebda5e565e7340f5aad4ef2288bcd72cdf9230031f62cac0",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "622e7996a1dd73eeebda5e565e7340f5aad4ef2288bcd72cdf9230031f62cac0",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/designed-speech.test.ts",
+      "bytes": 1540,
+      "sha256": "adb9f1c77bc338046bc3fd8ed0210569b82c8f618971205ff79d8753f81cf4e6",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "adb9f1c77bc338046bc3fd8ed0210569b82c8f618971205ff79d8753f81cf4e6",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/development-profile.test.ts",
+      "bytes": 14484,
+      "sha256": "13b40c8a0787c8002a4ebcd412a56e3a425286bcf69d64547ff3e4429d740d42",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "13b40c8a0787c8002a4ebcd412a56e3a425286bcf69d64547ff3e4429d740d42",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/development.test.ts",
+      "bytes": 9016,
+      "sha256": "8490ebecec044621b66fc09fba739a93f1a3ca61d19f0d10e43f72e7021b80e4",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "8490ebecec044621b66fc09fba739a93f1a3ca61d19f0d10e43f72e7021b80e4",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/extension-contracts.test.ts",
+      "bytes": 29595,
+      "sha256": "311fa9f020c78329b33a013ce0d6c3f805e4e56c2b6d5690f3cc7d2a4e5c9f80",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "311fa9f020c78329b33a013ce0d6c3f805e4e56c2b6d5690f3cc7d2a4e5c9f80",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/extension-ui.test.tsx",
+      "bytes": 73325,
+      "sha256": "67930eb054f376029efa3c2e8231512849c49bacc9cc9b81964350e570cf07a3",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "67930eb054f376029efa3c2e8231512849c49bacc9cc9b81964350e570cf07a3",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/extensions-integration.test.ts",
+      "bytes": 68351,
+      "sha256": "fd207ff29620e289c0b59638420b766ed0cb69066dc547bbdc047ba51a48f35f",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "fd207ff29620e289c0b59638420b766ed0cb69066dc547bbdc047ba51a48f35f",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/fallback.test.ts",
+      "bytes": 14158,
+      "sha256": "6b1033c1cca168bced1ee2b65bfd4d04bffdc55c09dcd877b783e95ea913c355",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "6b1033c1cca168bced1ee2b65bfd4d04bffdc55c09dcd877b783e95ea913c355",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/image-capabilities.test.ts",
+      "bytes": 25954,
+      "sha256": "d36085e14ca3028478c5e7678cc9849fd143c5d319cd5b744222b397c8b0cfc3",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "d36085e14ca3028478c5e7678cc9849fd143c5d319cd5b744222b397c8b0cfc3",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/listening-fixtures.test.ts",
+      "bytes": 8341,
+      "sha256": "7416ab0a6b7a486e3be480f82a5f0875da6cff0129112a7c58a178f1606634f2",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "7416ab0a6b7a486e3be480f82a5f0875da6cff0129112a7c58a178f1606634f2",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/listening.test.ts",
+      "bytes": 92132,
+      "sha256": "af5f2fa2408cd7de22d0d6c06340f1bdaf402eb9fb7438c1c68554e9c5c7eb24",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "af5f2fa2408cd7de22d0d6c06340f1bdaf402eb9fb7438c1c68554e9c5c7eb24",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/managed-updates.test.ts",
+      "bytes": 38489,
+      "sha256": "6de050aed4adef4f717e7cd52d040a8d82af397eeeb532ffa6008901713f6ed0",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "6de050aed4adef4f717e7cd52d040a8d82af397eeeb532ffa6008901713f6ed0",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/memory-context.test.ts",
+      "bytes": 10370,
+      "sha256": "b6c0208230353ac6f7816faa3b5b1e25781a8d903cebc32cfab6c15708e19d73",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "b6c0208230353ac6f7816faa3b5b1e25781a8d903cebc32cfab6c15708e19d73",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/paired-notifications.test.ts",
+      "bytes": 9662,
+      "sha256": "401f9681abc7551b16109e21ead34b5dfe0e962002bac1b97c59dafc5835623e",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "401f9681abc7551b16109e21ead34b5dfe0e962002bac1b97c59dafc5835623e",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/presentation-cues.test.ts",
+      "bytes": 21329,
+      "sha256": "21639def5c4a44069044ff8b6eff73e23514fe83ceafec4da9f0319034c7f047",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "21639def5c4a44069044ff8b6eff73e23514fe83ceafec4da9f0319034c7f047",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/private-event-routing.test.ts",
+      "bytes": 12815,
+      "sha256": "efff29b245875268b81437e4cc47d6591fbe86bf1a8625f7e646fac738a91dba",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "efff29b245875268b81437e4cc47d6591fbe86bf1a8625f7e646fac738a91dba",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/public-assets.test.ts",
+      "bytes": 33865,
+      "sha256": "6d6eaa248a89cd8d69313ad55a136bbb517d0059d7e548583e9a13886da8d5a1",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "6d6eaa248a89cd8d69313ad55a136bbb517d0059d7e548583e9a13886da8d5a1",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/public-export.test.ts",
+      "bytes": 35453,
+      "sha256": "32bd4ecb86f203d7e4d60c34aeeb0e0da3a11f6037675286a92eb0fe682ea740",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "32bd4ecb86f203d7e4d60c34aeeb0e0da3a11f6037675286a92eb0fe682ea740",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/qwen-speech.test.ts",
+      "bytes": 867,
+      "sha256": "d0040c7cce6ecd113c06011a896d593d324aaa3bdff63d2a00b160ada16177fa",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "d0040c7cce6ecd113c06011a896d593d324aaa3bdff63d2a00b160ada16177fa",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/remote-recovery.test.ts",
+      "bytes": 11049,
+      "sha256": "2c1e86775f9dbc15c9acf0bf5cb9230d7c1c9c6b0c53e2594e73e5899cea574c",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "2c1e86775f9dbc15c9acf0bf5cb9230d7c1c9c6b0c53e2594e73e5899cea574c",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/research-refresh-lifecycle.test.ts",
+      "bytes": 8261,
+      "sha256": "1bf0283902bf083329756852359e57fedc43bbf23cbc82ec0a73b85f311b298d",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "1bf0283902bf083329756852359e57fedc43bbf23cbc82ec0a73b85f311b298d",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/runtime-agents.test.ts",
+      "bytes": 106252,
+      "sha256": "2aacc0e2f85b7e6ff51fe8e9715fc179956f29011ae8dcf246d1fbcf3734475e",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "2aacc0e2f85b7e6ff51fe8e9715fc179956f29011ae8dcf246d1fbcf3734475e",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/runtime-packaging.test.ts",
+      "bytes": 21965,
+      "sha256": "66b6592ef9e71766200c33f1b167bf883a1cc21ace65544cdf9c7211d6fe4ad5",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "66b6592ef9e71766200c33f1b167bf883a1cc21ace65544cdf9c7211d6fe4ad5",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/runtime.test.ts",
+      "bytes": 20038,
+      "sha256": "48089663d7550bc0fecd00558d073d45a8b016591de348c0e4b584f5df817e87",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "48089663d7550bc0fecd00558d073d45a8b016591de348c0e4b584f5df817e87",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/security-tools.test.ts",
+      "bytes": 43136,
+      "sha256": "7975610e97e7533708a797df8fb8a7b6963469fe3893510394708d1877e2405f",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "7975610e97e7533708a797df8fb8a7b6963469fe3893510394708d1877e2405f",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/service.test.ts",
+      "bytes": 75178,
+      "sha256": "692c1e7165a55cfda3b316f49184e2ad8a9149dabfbd150a315085c3f5ff8291",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "692c1e7165a55cfda3b316f49184e2ad8a9149dabfbd150a315085c3f5ff8291",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/signed-updates.test.ts",
+      "bytes": 44622,
+      "sha256": "2b05bb470125b2ba93645ae01ec31dcf9b86b2806d8ceccd11bb9710387a99e3",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "2b05bb470125b2ba93645ae01ec31dcf9b86b2806d8ceccd11bb9710387a99e3",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/skill-verification.test.ts",
+      "bytes": 30912,
+      "sha256": "0ff25fe9d24b2f8f3861c792043b6f4ffd53421ccffdc36318d9584d1e295742",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "0ff25fe9d24b2f8f3861c792043b6f4ffd53421ccffdc36318d9584d1e295742",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/skills.test.ts",
+      "bytes": 35051,
+      "sha256": "75f353b059472224e6e19997c033b1b4d3d96fa6c180357b0e47c5c246b456f8",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "75f353b059472224e6e19997c033b1b4d3d96fa6c180357b0e47c5c246b456f8",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/speech-detector.test.ts",
+      "bytes": 23627,
+      "sha256": "f523e9d2f80934ca554c797c14ed1fd1c4d7621029c3003f30ba2ae4a46b3d20",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "f523e9d2f80934ca554c797c14ed1fd1c4d7621029c3003f30ba2ae4a46b3d20",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/speech-output.test.ts",
+      "bytes": 5120,
+      "sha256": "fca647af4ff7ed4cdb78801b339bfc025c88331868e4824f3b92721256bee3e9",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "fca647af4ff7ed4cdb78801b339bfc025c88331868e4824f3b92721256bee3e9",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/speech-service.test.ts",
+      "bytes": 2436,
+      "sha256": "492787a8237b0811a6155b4bc3377f24b546f684df58dfc7022b150cb494b413",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "492787a8237b0811a6155b4bc3377f24b546f684df58dfc7022b150cb494b413",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/speech-tempo.test.ts",
+      "bytes": 1153,
+      "sha256": "453fc3722cfc3b4cd92b16ea58b3096a4bda7caeecf2d5a46d15eb15086ac831",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "453fc3722cfc3b4cd92b16ea58b3096a4bda7caeecf2d5a46d15eb15086ac831",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/stop-shortcut.test.ts",
+      "bytes": 3868,
+      "sha256": "e636225f4ce1cd42bafbafc6312ca48cf65ee432769e9f00fba8528b0bdfd2ab",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "e636225f4ce1cd42bafbafc6312ca48cf65ee432769e9f00fba8528b0bdfd2ab",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/task-evaluation.test.ts",
+      "bytes": 37957,
+      "sha256": "d4413879da638852eeb5b223c504396439f42e9bee75090453fb33055c5346e0",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "d4413879da638852eeb5b223c504396439f42e9bee75090453fb33055c5346e0",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/task-verification.test.ts",
+      "bytes": 52308,
+      "sha256": "9240a6624ecd0546a4a9fc542c0350cd675ca64e1be563f2e99219f2cf880b91",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "9240a6624ecd0546a4a9fc542c0350cd675ca64e1be563f2e99219f2cf880b91",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/transcript-correction.test.ts",
+      "bytes": 26063,
+      "sha256": "37f649b7f1ab5c403cb545654f26da68b10e9f6869ff614261e1605eb6ccb95f",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "37f649b7f1ab5c403cb545654f26da68b10e9f6869ff614261e1605eb6ccb95f",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/typed-chat-submission.test.ts",
+      "bytes": 22458,
+      "sha256": "936501f97de44422871ade6dcddc540fa9fc77e402ba5d2fdc83f51ea01c82c5",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "936501f97de44422871ade6dcddc540fa9fc77e402ba5d2fdc83f51ea01c82c5",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/update-maintenance.test.ts",
+      "bytes": 10165,
+      "sha256": "7626f11e616cad4be2bab0c0d18f0218ae51d896ec40723557847039c88e929c",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "7626f11e616cad4be2bab0c0d18f0218ae51d896ec40723557847039c88e929c",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/voice-continuity.test.ts",
+      "bytes": 30441,
+      "sha256": "5d3157199d74382b7833acb2a61abaa9be21218b97f9c1ddfc37d4404063b86e",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "5d3157199d74382b7833acb2a61abaa9be21218b97f9c1ddfc37d4404063b86e",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/voice-turns.test.ts",
+      "bytes": 5177,
+      "sha256": "082cc101b9a2a819145be7f3a792d3a7f74a4f9966265edea2f8635062a6e13b",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "082cc101b9a2a819145be7f3a792d3a7f74a4f9966265edea2f8635062a6e13b",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tools/coordinator/cli.ts",
+      "bytes": 9031,
+      "sha256": "8ac54c9e4e273b95d9063442aff894ce3bf129efc869934a4dc27aaf7ac427af",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "8ac54c9e4e273b95d9063442aff894ce3bf129efc869934a4dc27aaf7ac427af",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tools/coordinator/config.json",
+      "bytes": 1396,
+      "sha256": "3076fd6910fcde14edcd49349f25ecf7e9b572dd665cf2517011364c460a3527",
+      "origin": "sanitized",
+      "license": "MIT",
+      "sourceSha256": "59777f32482b9ab52c48ac17d1fa891776977462e79d6367a553c3eca979221f"
+    },
+    {
+      "path": "tools/coordinator/engine.ts",
+      "bytes": 51572,
+      "sha256": "7d32fc26b6905fc2c17d2da5bd9ecc45b921ea10ac97058707d1a992e1d69222",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "7d32fc26b6905fc2c17d2da5bd9ecc45b921ea10ac97058707d1a992e1d69222",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tools/coordinator/git.ts",
+      "bytes": 12678,
+      "sha256": "da2fc3e10c1f25a70f47afe088b2692c38cfbe307fc65aaece0c9067a0f29a31",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "da2fc3e10c1f25a70f47afe088b2692c38cfbe307fc65aaece0c9067a0f29a31",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tools/coordinator/process.ts",
+      "bytes": 36245,
+      "sha256": "c6e5c58ae33d680d533b8e68acbebd89a4d8acb442fd426eec1e63ba470cbcee",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "c6e5c58ae33d680d533b8e68acbebd89a4d8acb442fd426eec1e63ba470cbcee",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tools/coordinator/protocol.ts",
+      "bytes": 3137,
+      "sha256": "1aea9187dde3cd443cac7283e8bfd5990bac5a592445c0c34147ff24642ada8c",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "1aea9187dde3cd443cac7283e8bfd5990bac5a592445c0c34147ff24642ada8c",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tools/coordinator/storage.ts",
+      "bytes": 8989,
+      "sha256": "319eadb95699b9e66b0dab2b1192ed9f087e63fa0275f6f9b8aeaca37367e7e9",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "319eadb95699b9e66b0dab2b1192ed9f087e63fa0275f6f9b8aeaca37367e7e9",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tools/coordinator/types.ts",
+      "bytes": 7469,
+      "sha256": "96dc99e38b7483ded606309d47d5074fff10016b0784047963444468522e26af",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "96dc99e38b7483ded606309d47d5074fff10016b0784047963444468522e26af",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tools/coordinator/versioning.ts",
+      "bytes": 14991,
+      "sha256": "57d98f66a14d8ad071dc3ac31f4bc05829e4a5b6d50a9192462801ebd09a2d3d",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "57d98f66a14d8ad071dc3ac31f4bc05829e4a5b6d50a9192462801ebd09a2d3d",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tools/process-supervisor/ProcessSupervisor.csproj",
+      "bytes": 616,
+      "sha256": "bbf87bffd98298f84cbacf025107a8574dd85abb90f67569046196c148854574",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "bbf87bffd98298f84cbacf025107a8574dd85abb90f67569046196c148854574",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tools/process-supervisor/Program.cs",
+      "bytes": 42722,
+      "sha256": "149dd686f2354909bdcc2913914b509f81b1322059f7bd1bdfbef148d6940770",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "149dd686f2354909bdcc2913914b509f81b1322059f7bd1bdfbef148d6940770",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tsconfig.json",
+      "bytes": 282,
+      "sha256": "b1728fb70f1db5e3381c94cd9e2c15823bda877133752dd84ac385148a965f49",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "b1728fb70f1db5e3381c94cd9e2c15823bda877133752dd84ac385148a965f49",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    }
+  ],
+  "contentSha256": "1536aedb314e7cf078f9080ac822712165af2c8bd515bcbcb48810943c232613",
+  "limitations": [
+    "No source code, build, dependency install, provider, or platform test was executed by the exporter.",
+    "MIT/provenance declarations and the public-build branch require human review; content scans are not a proof of absence of secrets."
+  ]
+}

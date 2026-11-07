@@ -1,0 +1,6 @@
+allowBuilds:
+  electron-winstaller: false
+  esbuild: true
+minimumReleaseAgeExclude:
+  - sherpa-onnx-darwin-arm64@2.0.0
+  - sherpa-onnx-win-arm64@2.0.0
