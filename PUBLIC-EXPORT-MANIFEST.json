@@ -2,8 +2,8 @@
   "version": 1,
   "status": "exported",
   "policy": "reviewed-mit-public-core-v1",
-  "reviewManifestSha256": "72fa8803c3c6cc8b18981833d7d99f7c0a73b09935740c18df4ea957f7a3e42a",
-  "sourceSelectionSha256": "260ce6e341dcdd92535d49dc73abb01914a29434a27f8488b2316585a6a6e6ee",
+  "reviewManifestSha256": "072d57b1a3d903e76bb60ff5439c42de874a6b913c278368345ffd19eae816ec",
+  "sourceSelectionSha256": "8d35e6481dd039c4044b769f313e5993abf44e2bc8160f9130833bfa6d98f072",
   "publicBuild": {
     "mode": "environment",
     "entry": "scripts/build.mjs"
@@ -213,10 +213,10 @@
     {
       "path": "package.json",
       "bytes": 2034,
-      "sha256": "80c80ad56224123ef33b48cea9a75ac10d25a5816171bcfa6af0e9bef4816c3d",
+      "sha256": "07deff01a45869be7cb30376f28425bd6e9845c2d84a78fb5424499aa229c349",
       "origin": "sanitized",
       "license": "MIT",
-      "sourceSha256": "7f0e697ec06aa132c7ecab8a249d6d9bfd9e41f419cdf80c14c1516fa87d8239",
+      "sourceSha256": "1ad151290084f2f0d5b5d1885071c752977c3a3d13077674737a5bd6687d16eb",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -549,6 +549,18 @@
       ]
     },
     {
+      "path": "src/desktop/contact-owner.ts",
+      "bytes": 44694,
+      "sha256": "659fb68882fcc25bcccd1efe6edbfe61fed2235668687c6d1a6e273710d37640",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "659fb68882fcc25bcccd1efe6edbfe61fed2235668687c6d1a6e273710d37640",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
       "path": "src/desktop/development-activity.ts",
       "bytes": 1636,
       "sha256": "7648ac01526a08e1f5e56b93d28e38cea9fdd9143b71adc5d9ded39011dc0948",
@@ -586,11 +598,11 @@
     },
     {
       "path": "src/desktop/main.ts",
-      "bytes": 62321,
-      "sha256": "f3e709658c4f773c607f49b0a8f577efec8b859f8df5e5ee90a14f9b39f17751",
+      "bytes": 65242,
+      "sha256": "dd72622effaff6c0d6e4cc19de3674fc33f41c514fcb9c228aa4eaf5a25e2be8",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "f3e709658c4f773c607f49b0a8f577efec8b859f8df5e5ee90a14f9b39f17751",
+      "sourceSha256": "dd72622effaff6c0d6e4cc19de3674fc33f41c514fcb9c228aa4eaf5a25e2be8",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -610,11 +622,11 @@
     },
     {
       "path": "src/desktop/runtime-profile.ts",
-      "bytes": 9030,
-      "sha256": "a4c76d213477e2042d587a979e5ae08edd9446d0a034e9ef5ff7e4b36610f8e2",
+      "bytes": 13459,
+      "sha256": "9bbce037e4e1fcc3fc084a34ffc899a06766d90fee1929fb501a9fe5aaee0d45",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "a4c76d213477e2042d587a979e5ae08edd9446d0a034e9ef5ff7e4b36610f8e2",
+      "sourceSha256": "9bbce037e4e1fcc3fc084a34ffc899a06766d90fee1929fb501a9fe5aaee0d45",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -646,11 +658,11 @@
     },
     {
       "path": "src/desktop/update-maintenance.ts",
-      "bytes": 12409,
-      "sha256": "42670360ba846125542bfe08c438d5c9dfd63d1c1e239e3b87bdb38d8fec25aa",
+      "bytes": 12825,
+      "sha256": "bb47189425223cb855dc09fdcfca3be3f1cea9089c1462ac3eec15ff2809e7bb",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "42670360ba846125542bfe08c438d5c9dfd63d1c1e239e3b87bdb38d8fec25aa",
+      "sourceSha256": "bb47189425223cb855dc09fdcfca3be3f1cea9089c1462ac3eec15ff2809e7bb",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -705,12 +717,24 @@
       ]
     },
     {
-      "path": "src/extensions/contact-providers.ts",
-      "bytes": 17605,
-      "sha256": "29302c64d3a3fd5aaceafc734f4014dd94b87caf67cf6ead176bdfcc3a244f07",
+      "path": "src/extensions/contact-admin.ts",
+      "bytes": 14946,
+      "sha256": "e6e224cc07c0c48ebc238661015aa43100a8ab404962087c282395b4fab0e105",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "29302c64d3a3fd5aaceafc734f4014dd94b87caf67cf6ead176bdfcc3a244f07",
+      "sourceSha256": "e6e224cc07c0c48ebc238661015aa43100a8ab404962087c282395b4fab0e105",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "src/extensions/contact-providers.ts",
+      "bytes": 22734,
+      "sha256": "17dd5c2f40438622e8b5c619b02a3cea2a396ec5633d2427cf250d08c5b1349a",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "17dd5c2f40438622e8b5c619b02a3cea2a396ec5633d2427cf250d08c5b1349a",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -718,11 +742,11 @@
     },
     {
       "path": "src/extensions/contacts.ts",
-      "bytes": 56539,
-      "sha256": "0588e02ce5c0dc75b259091f146cb4e4a4716fe50204b0a2f5a0aae581730619",
+      "bytes": 74392,
+      "sha256": "e3d8ac90434e890e8dcd2bcbc16191216d36f6aa16f0ac8ab2f8efc1a0a19fe8",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "0588e02ce5c0dc75b259091f146cb4e4a4716fe50204b0a2f5a0aae581730619",
+      "sourceSha256": "e3d8ac90434e890e8dcd2bcbc16191216d36f6aa16f0ac8ab2f8efc1a0a19fe8",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -730,11 +754,11 @@
     },
     {
       "path": "src/extensions/contracts.ts",
-      "bytes": 21854,
-      "sha256": "13d12e396ce8b23f8c8af4eac3dae0475f40cfa26b683d03a6657bc167e1099d",
+      "bytes": 21865,
+      "sha256": "04835c027097c38639b48cad81cf5601337f11a7c01a51c6cdebb7d3bd1bd01b",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "13d12e396ce8b23f8c8af4eac3dae0475f40cfa26b683d03a6657bc167e1099d",
+      "sourceSha256": "04835c027097c38639b48cad81cf5601337f11a7c01a51c6cdebb7d3bd1bd01b",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -754,11 +778,11 @@
     },
     {
       "path": "src/extensions/hub.ts",
-      "bytes": 67525,
-      "sha256": "6056f026839b3597d909e48822bdc80d6af777340dd6bb00225fdae015c39e82",
+      "bytes": 70124,
+      "sha256": "a573523dc7defd1256327ca56c49b153f34410fbb66791752cd1f8b05012d0b4",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "6056f026839b3597d909e48822bdc80d6af777340dd6bb00225fdae015c39e82",
+      "sourceSha256": "a573523dc7defd1256327ca56c49b153f34410fbb66791752cd1f8b05012d0b4",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -766,11 +790,11 @@
     },
     {
       "path": "src/extensions/managed-update-host.ts",
-      "bytes": 61270,
-      "sha256": "483ff8f3d8494e67a915728de97c4fe22b8e2dcbab059cd015402e267adfcc6e",
+      "bytes": 67586,
+      "sha256": "ca7f885d531932a753f5b0fc52eaae2a3cbed551006cdebcd3491d44d3de4677",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "483ff8f3d8494e67a915728de97c4fe22b8e2dcbab059cd015402e267adfcc6e",
+      "sourceSha256": "ca7f885d531932a753f5b0fc52eaae2a3cbed551006cdebcd3491d44d3de4677",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -969,6 +993,18 @@
       ]
     },
     {
+      "path": "src/server/contact-workflows.ts",
+      "bytes": 2333,
+      "sha256": "54c75207d6411ff9849e95154be8a4e8936638db160a17162fd0d7941ff2792d",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "54c75207d6411ff9849e95154be8a4e8936638db160a17162fd0d7941ff2792d",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
       "path": "src/server/context.ts",
       "bytes": 2630,
       "sha256": "e75b730b00213c3124775c6f7c416c1869efb00c0146791e9bd928468d982c03",
@@ -1126,11 +1162,11 @@
     },
     {
       "path": "src/server/service.ts",
-      "bytes": 57863,
-      "sha256": "53e655dc2f8e1df61975a92ba026043aea4a7a7876c8bc4e1782e75b6fd0a6e2",
+      "bytes": 61310,
+      "sha256": "b4824689ee5187e7ba38a05e24bd07d2b8aa63fcad14ec11ba432952c531167a",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "53e655dc2f8e1df61975a92ba026043aea4a7a7876c8bc4e1782e75b6fd0a6e2",
+      "sourceSha256": "b4824689ee5187e7ba38a05e24bd07d2b8aa63fcad14ec11ba432952c531167a",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -1306,11 +1342,11 @@
     },
     {
       "path": "src/ui/ExtensionSettings.tsx",
-      "bytes": 60615,
-      "sha256": "8627024999f2b569a0b538bbc5f7e68d69267a7c95301d7f0a38807e5afdd2b6",
+      "bytes": 92975,
+      "sha256": "63dcd4db16cbce232c44e94e501ef6d5f4498c2fa38f3e2447b6c879e4792931",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "8627024999f2b569a0b538bbc5f7e68d69267a7c95301d7f0a38807e5afdd2b6",
+      "sourceSha256": "63dcd4db16cbce232c44e94e501ef6d5f4498c2fa38f3e2447b6c879e4792931",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -1474,11 +1510,11 @@
     },
     {
       "path": "src/ui/extensions-api.ts",
-      "bytes": 55152,
-      "sha256": "e9d08d82e8e6e73f9d0700e3aa3a893693d262400dc4093910d8cfcea0f1a4e3",
+      "bytes": 98785,
+      "sha256": "33e75bb9fa4a77cfc6f0c812ad14b55b1c1c48bd7f1051d88100ed6a45f87375",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "e9d08d82e8e6e73f9d0700e3aa3a893693d262400dc4093910d8cfcea0f1a4e3",
+      "sourceSha256": "33e75bb9fa4a77cfc6f0c812ad14b55b1c1c48bd7f1051d88100ed6a45f87375",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -1510,11 +1546,11 @@
     },
     {
       "path": "src/ui/main.tsx",
-      "bytes": 59184,
-      "sha256": "c837cadb2e0498e69ef3e8482b316f84c9b813793b86046410dc80fb49916139",
+      "bytes": 59776,
+      "sha256": "b28131585e814d023e2a105d1aef52a32b09286470a08cf707bd0cffce8331c8",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "c837cadb2e0498e69ef3e8482b316f84c9b813793b86046410dc80fb49916139",
+      "sourceSha256": "b28131585e814d023e2a105d1aef52a32b09286470a08cf707bd0cffce8331c8",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -1749,12 +1785,36 @@
       ]
     },
     {
-      "path": "tests/contact-providers.test.ts",
-      "bytes": 14463,
-      "sha256": "29f65e8f093ad391bc765fd79e077c18a7fa2189c9e87ba2621307e9f826675f",
+      "path": "tests/contact-admin.test.ts",
+      "bytes": 30516,
+      "sha256": "934a6f0bde9bb76cc0913b5a79070d81aa686b2a007914a63208b50201c12001",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "29f65e8f093ad391bc765fd79e077c18a7fa2189c9e87ba2621307e9f826675f",
+      "sourceSha256": "934a6f0bde9bb76cc0913b5a79070d81aa686b2a007914a63208b50201c12001",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/contact-owner-ui.test.tsx",
+      "bytes": 96172,
+      "sha256": "62bfc137e2b8504fbadb6e74bd46291c52db1108f49312b5b50fb7f1348c2bbd",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "62bfc137e2b8504fbadb6e74bd46291c52db1108f49312b5b50fb7f1348c2bbd",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/contact-providers.test.ts",
+      "bytes": 21308,
+      "sha256": "c6fe795d8c83c928921794b6d7791635251fa1c3267df52bfdbd2d1d26d78006",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "c6fe795d8c83c928921794b6d7791635251fa1c3267df52bfdbd2d1d26d78006",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -1762,11 +1822,11 @@
     },
     {
       "path": "tests/contact-review.test.ts",
-      "bytes": 25157,
-      "sha256": "07c0ec42e45b38e4d47a18ef8a749be8eff1cfbf07420db66c2265683ec02840",
+      "bytes": 25590,
+      "sha256": "1d20451c2fbd467c9d5adbb1892f2a30befcff4bc9b61de83a28bf8e51e638ac",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "07c0ec42e45b38e4d47a18ef8a749be8eff1cfbf07420db66c2265683ec02840",
+      "sourceSha256": "1d20451c2fbd467c9d5adbb1892f2a30befcff4bc9b61de83a28bf8e51e638ac",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -1774,11 +1834,11 @@
     },
     {
       "path": "tests/contacts.test.ts",
-      "bytes": 43880,
-      "sha256": "1fc5cf26ad7aaa7236be9555a8da28e6140793d8ae98bbc154e26f559cd34dbc",
+      "bytes": 83716,
+      "sha256": "13122d190622595feb642421828c688e7d42f53bea4445dfde635e54c5ca5276",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "1fc5cf26ad7aaa7236be9555a8da28e6140793d8ae98bbc154e26f559cd34dbc",
+      "sourceSha256": "13122d190622595feb642421828c688e7d42f53bea4445dfde635e54c5ca5276",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -1905,12 +1965,24 @@
       ]
     },
     {
-      "path": "tests/development-profile.test.ts",
-      "bytes": 14484,
-      "sha256": "13b40c8a0787c8002a4ebcd412a56e3a425286bcf69d64547ff3e4429d740d42",
+      "path": "tests/desktop-contact-owner.test.ts",
+      "bytes": 64352,
+      "sha256": "fb6ced21b9168f2b23c0194409a67d3a36e0717544ba08515f533199ca25671d",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "13b40c8a0787c8002a4ebcd412a56e3a425286bcf69d64547ff3e4429d740d42",
+      "sourceSha256": "fb6ced21b9168f2b23c0194409a67d3a36e0717544ba08515f533199ca25671d",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/development-profile.test.ts",
+      "bytes": 14823,
+      "sha256": "8fee232e45bd5c4817f6a9b5cb96f30ad0682015dbe115d416cc7053ce97eef0",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "8fee232e45bd5c4817f6a9b5cb96f30ad0682015dbe115d416cc7053ce97eef0",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -1942,11 +2014,11 @@
     },
     {
       "path": "tests/extension-ui.test.tsx",
-      "bytes": 73325,
-      "sha256": "67930eb054f376029efa3c2e8231512849c49bacc9cc9b81964350e570cf07a3",
+      "bytes": 74047,
+      "sha256": "e05a2b939d4257aac2cfa8963029914d2d7df07fab2783f5627528633ba99584",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "67930eb054f376029efa3c2e8231512849c49bacc9cc9b81964350e570cf07a3",
+      "sourceSha256": "e05a2b939d4257aac2cfa8963029914d2d7df07fab2783f5627528633ba99584",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -2013,12 +2085,24 @@
       ]
     },
     {
-      "path": "tests/managed-updates.test.ts",
-      "bytes": 38489,
-      "sha256": "6de050aed4adef4f717e7cd52d040a8d82af397eeeb532ffa6008901713f6ed0",
+      "path": "tests/managed-protection-context.test.ts",
+      "bytes": 41694,
+      "sha256": "9ede85a899666800df8ae8d92cf7e337c4c1ab338bb33f9973f9201d5bb54142",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "6de050aed4adef4f717e7cd52d040a8d82af397eeeb532ffa6008901713f6ed0",
+      "sourceSha256": "9ede85a899666800df8ae8d92cf7e337c4c1ab338bb33f9973f9201d5bb54142",
+      "noticePaths": [
+        "THIRD-PARTY-NOTICES.txt",
+        "development/UPSTREAM-LICENSE.txt"
+      ]
+    },
+    {
+      "path": "tests/managed-updates.test.ts",
+      "bytes": 45765,
+      "sha256": "993a7bba9b4ac4676d2e872a40e0bea66ac8d2a1348921ac48942a4e8395b7d0",
+      "origin": "reviewed",
+      "license": "MIT",
+      "sourceSha256": "993a7bba9b4ac4676d2e872a40e0bea66ac8d2a1348921ac48942a4e8395b7d0",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -2194,11 +2278,11 @@
     },
     {
       "path": "tests/signed-updates.test.ts",
-      "bytes": 44622,
-      "sha256": "2b05bb470125b2ba93645ae01ec31dcf9b86b2806d8ceccd11bb9710387a99e3",
+      "bytes": 46994,
+      "sha256": "f91a21cf0e2408f74761881cd09b1d41e2bbd73df39e89fab7e9e76c2651ca13",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "2b05bb470125b2ba93645ae01ec31dcf9b86b2806d8ceccd11bb9710387a99e3",
+      "sourceSha256": "f91a21cf0e2408f74761881cd09b1d41e2bbd73df39e89fab7e9e76c2651ca13",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -2338,11 +2422,11 @@
     },
     {
       "path": "tests/update-maintenance.test.ts",
-      "bytes": 10165,
-      "sha256": "7626f11e616cad4be2bab0c0d18f0218ae51d896ec40723557847039c88e929c",
+      "bytes": 10518,
+      "sha256": "bdac291e7796b0fc0e07ae204beeb9887c813366a2c54b1df88f399a1b880148",
       "origin": "reviewed",
       "license": "MIT",
-      "sourceSha256": "7626f11e616cad4be2bab0c0d18f0218ae51d896ec40723557847039c88e929c",
+      "sourceSha256": "bdac291e7796b0fc0e07ae204beeb9887c813366a2c54b1df88f399a1b880148",
       "noticePaths": [
         "THIRD-PARTY-NOTICES.txt",
         "development/UPSTREAM-LICENSE.txt"
@@ -2390,7 +2474,7 @@
       "sha256": "3076fd6910fcde14edcd49349f25ecf7e9b572dd665cf2517011364c460a3527",
       "origin": "sanitized",
       "license": "MIT",
-      "sourceSha256": "a0a9b13f2ffff098acc4acd4bf5cc7615706886c03a3669071fae25ab50e3f03"
+      "sourceSha256": "23c4542afdb25fefe1b0ee262b78f70782d5cbe2333af089a274597bb1dda867"
     },
     {
       "path": "tools/coordinator/engine.ts",
@@ -2513,7 +2597,7 @@
       ]
     }
   ],
-  "contentSha256": "5b2c45136149ab4550a0afbebde3ca442402008c36bc3f84775c7c06fb33beab",
+  "contentSha256": "a41bdd6eef82cac7660e08511c2001feec924e88898f7192154928ba6904482a",
   "limitations": [
     "No source code, build, dependency install, provider, or platform test was executed by the exporter.",
     "MIT/provenance declarations and the public-build branch require human review; content scans are not a proof of absence of secrets."
