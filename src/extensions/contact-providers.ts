@@ -1,6 +1,7 @@
 import {createHash, randomBytes, randomUUID, timingSafeEqual} from 'node:crypto';
 import {z} from 'zod';
 import {IdSchema} from './contracts';
+import {ApprovedTextSchema,type ApprovedText} from './contact-admin';
 
 /** These host-only adapters are not tool inputs. The outbox owns authorization and retries. */
 export type ContactChannel = 'gmail'|'sms'|'voice'|'whatsapp'|'android';
@@ -17,6 +18,8 @@ export interface PreparedDelivery {dispatch():Promise<ProviderObservation>}
 export interface ContactProvider {
   readonly id:string;
   readonly channel:ContactChannel;
+  /** Opaque account/configuration generation; never a token or recipient. */
+  configurationId?():Promise<string>;
   /** Validation, credential loading/refresh only; must never send. */
   prepare(message:Readonly<OutboundMessage>,signal:AbortSignal):Promise<PreparedDelivery>;
   /** Read-only, only called for a record previously returned for this message. */
@@ -24,6 +27,8 @@ export interface ContactProvider {
 }
 /** Implement with protected host storage; never expose this interface to models or exports. */
 export interface ContactSecretVault {
+  /** Non-I/O health fence. Recovery cannot probe or change account credentials. */
+  assertUsable?():void;
   read(key:string):Promise<string|undefined>;
   write(key:string,value:string):Promise<void>;
   delete(key:string):Promise<void>;
@@ -87,7 +92,9 @@ async function oauthSerialized<T>(vault:ContactSecretVault,run:()=>Promise<T>):P
   const previous=oauthLocks.get(vault)??Promise.resolve(),result=previous.catch(()=>{}).then(run);oauthLocks.set(vault,result);
   try{return await result;}finally{if(oauthLocks.get(vault)===result)oauthLocks.delete(vault);}
 }
+export const GmailStoredTokensSchema=z.object({accessToken:z.string().min(1).max(65536).optional(),refreshToken:z.string().min(1).max(65536).optional(),expiresAt:z.number().int().nonnegative().safe()}).strict().refine(t=>!!t.accessToken||!!t.refreshToken);
 interface GmailTokens {accessToken:string;refreshToken?:string;expiresAt:number}
+const pendingGmailSchema=z.object({verifier:z.string().regex(/^[A-Za-z0-9_-]{64}$/),redirectUri:z.string().max(2048).refine(value=>{try{const u=new URL(value);return u.protocol==='http:'&&u.hostname==='127.0.0.1'&&!!u.port&&!u.username&&!u.password&&!u.hash&&!u.search;}catch{return false;}}),expiresAt:z.number().int().nonnegative().safe(),createdAt:z.number().int().nonnegative().safe()}).strict();
 export interface GmailConfiguration {clientId:string;sender:string;vaultKey:string;clientSecretKey?:string}
 /** Desktop loopback PKCE. The caller opens the returned URL only after trusted UI action. */
 export class GmailProvider implements ContactProvider {
@@ -99,28 +106,34 @@ export class GmailProvider implements ContactProvider {
     try{
       const u=new URL(redirectUri);
       if(u.protocol!=='http:'||u.hostname!=='127.0.0.1'||!u.port||u.username||u.password||u.hash||u.search||!this.config.clientId)throw unavailable();
-      const state=randomBytes(32).toString('base64url'),verifier=randomBytes(48).toString('base64url'),expiresAt=this.clock()+300000;
-      await this.vault.write(this.config.vaultKey+':pkce:'+hash(state),JSON.stringify({verifier,redirectUri,expiresAt,createdAt:this.clock()}));
+      const state=randomBytes(32).toString('base64url'),verifier=randomBytes(48).toString('base64url'),createdAt=this.clock(),expiresAt=createdAt+300000;
+      const key=this.config.vaultKey+':pkce:'+hash(state),pending=JSON.stringify(pendingGmailSchema.parse({verifier,redirectUri,expiresAt,createdAt}));
+      await this.vault.write(key,pending);if(await this.vault.read(key)!==pending)throw unavailable();
       const q=new URLSearchParams({client_id:this.config.clientId,redirect_uri:redirectUri,response_type:'code',scope:gmailScope,
         access_type:'offline',prompt:'consent',state,code_challenge:createHash('sha256').update(verifier).digest('base64url'),code_challenge_method:'S256'});
       return {authorizationUrl:'https://accounts.google.com/o/oauth2/v2/auth?'+q,state,expiresAt};
     }catch{throw unavailable();}
   }
   async finishConnection(state:string,code:string,signal:AbortSignal):Promise<{connected:true}>{
+    const epoch=this.epoch;
     return oauthSerialized(this.vault,async()=>{
     try{
       if(!/^[A-Za-z0-9_-]{43}$/.test(state)||!code||code.length>4096)throw unavailable();
       const key=this.config.vaultKey+':pkce:'+hash(state),raw=await this.vault.read(key);
       // Consume before network I/O, including failed exchanges.
       await this.vault.delete(key);if(!raw)throw unavailable();
-      const pending=JSON.parse(raw);
-      if(pending.expiresAt<=this.clock()||pending.createdAt>this.clock())throw unavailable();
+      const pending=pendingGmailSchema.parse(JSON.parse(raw));
+      if(pending.expiresAt<=this.clock()||pending.createdAt>this.clock()||pending.expiresAt!==pending.createdAt+300000)throw unavailable();
+      signal.throwIfAborted();
       const tokens=await this.token(new URLSearchParams({grant_type:'authorization_code',code,code_verifier:pending.verifier,redirect_uri:pending.redirectUri}),signal);
       if(!tokens.refreshToken)throw unavailable();
-      await this.vault.write(this.config.vaultKey,JSON.stringify(tokens));this.epoch++;return {connected:true};
+      signal.throwIfAborted();if(epoch!==this.epoch)throw unavailable();
+      const value=JSON.stringify(tokens);await this.vault.write(this.config.vaultKey,value);signal.throwIfAborted();if(epoch!==this.epoch||await this.vault.read(this.config.vaultKey)!==value)throw unavailable();
+      this.epoch++;return {connected:true};
     }catch{throw unavailable();}
     });
   }
+  async cancelConnection(state:string){this.epoch++;if(/^[A-Za-z0-9_-]{43}$/.test(state))await oauthSerialized(this.vault,()=>this.vault.delete(this.config.vaultKey+':pkce:'+hash(state)));}
   async disconnect(){this.epoch++;try{await oauthSerialized(this.vault,()=>this.vault.delete(this.config.vaultKey));}catch{throw unavailable();}}
   private async token(form:URLSearchParams,signal:AbortSignal):Promise<GmailTokens>{
     form.set('client_id',this.config.clientId);
@@ -133,11 +146,13 @@ export class GmailProvider implements ContactProvider {
   private async credentials(signal:AbortSignal):Promise<GmailTokens>{
     if(this.refresh)return this.refresh;
     this.refresh=oauthSerialized(this.vault,async()=>{
-      const raw=await this.vault.read(this.config.vaultKey);if(!raw)throw unavailable();const t:GmailTokens=JSON.parse(raw);
-      if(t.accessToken&&t.expiresAt>this.clock()+60000)return t;
+      const raw=await this.vault.read(this.config.vaultKey);if(!raw)throw unavailable();const t=GmailStoredTokensSchema.parse(JSON.parse(raw));
+      if(t.accessToken&&t.expiresAt>this.clock()+60000)return {...t,accessToken:t.accessToken};
       if(!t.refreshToken)throw unavailable();
-      const next=await this.token(new URLSearchParams({grant_type:'refresh_token',refresh_token:t.refreshToken}),signal);
-      next.refreshToken??=t.refreshToken;await this.vault.write(this.config.vaultKey,JSON.stringify(next));return next;
+      const epoch=this.epoch,next=await this.token(new URLSearchParams({grant_type:'refresh_token',refresh_token:t.refreshToken}),signal);
+      signal.throwIfAborted();if(epoch!==this.epoch)throw unavailable();
+      next.refreshToken??=t.refreshToken;const value=JSON.stringify(next);await this.vault.write(this.config.vaultKey,value);
+      if(await this.vault.read(this.config.vaultKey)!==value)throw unavailable();signal.throwIfAborted();if(epoch!==this.epoch)throw unavailable();return next;
     });
     try{return await this.refresh;}finally{this.refresh=undefined;}
   }
@@ -157,7 +172,14 @@ export class GmailProvider implements ContactProvider {
   // Send-only OAuth deliberately has no mailbox read or inferred delivery capability.
 }
 
-export interface TwilioConfiguration {accountSid:string;authTokenKey:string;sender:string;voiceEnabled?:boolean}
+export interface TwilioConfiguration {accountSid:string;authTokenKey:string;sender:string;voiceEnabled?:boolean;approvedText?:readonly ApprovedText[]}
+export const approvedContactTextHash=(t:Pick<ApprovedText,'accountSid'|'sid'|'language'|'body'|'variables'>)=>hash(JSON.stringify({accountSid:t.accountSid,contentSid:t.sid,language:t.language,body:t.body,variables:[...t.variables].sort()}));
+export function renderApprovedContactText(input:ApprovedText,variables:Record<string,string>):string {
+  const template=ApprovedTextSchema.parse(input),keys=Object.keys(variables).sort();
+  if(template.sha256!==approvedContactTextHash(template)||JSON.stringify(keys)!==JSON.stringify([...template.variables].sort())||keys.some(k=>typeof variables[k]!=='string'||!variables[k].length||variables[k].length>1024||/[{}]/.test(variables[k])))throw unavailable();
+  const body=template.body.replace(/\{\{([1-9][0-9]{0,2})\}\}/g,(_,key)=>variables[key]);
+  if(body.includes('{{')||body.includes('}}')||body.length>1600||!body.length)throw unavailable();return body;
+}
 const xml=(s:string)=>s.replace(/[<>&"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'}[c]!));
 /** Official Twilio REST API: SMS, optional bounded voice, or approved WhatsApp Content templates. */
 export class TwilioProvider implements ContactProvider {
@@ -165,6 +187,19 @@ export class TwilioProvider implements ContactProvider {
   constructor(readonly channel:'sms'|'voice'|'whatsapp',private config:TwilioConfiguration,private vault:ContactSecretVault,private fetcher:ContactFetch){this.id='twilio-'+channel;}
   private async auth(){if(!sid(this.config.accountSid,'AC'))throw unavailable();const token=await this.vault.read(this.config.authTokenKey);if(!token)throw unavailable();return 'Basic '+Buffer.from(this.config.accountSid+':'+token).toString('base64');}
   private url(recordId?:string){return 'https://api.twilio.com/2010-04-01/Accounts/'+this.config.accountSid+'/'+(this.channel==='voice'?'Calls':'Messages')+(recordId?'/'+recordId:'')+'.json';}
+  /** Explicit setup/recheck only. Never follows response links, enumerates or submits content. */
+  async approvedPlainText(contentSid:string,language:string,signal:AbortSignal):Promise<Omit<ApprovedText,'revision'|'providerGeneration'|'checkedAt'>>{
+    if(!sid(contentSid,'HX'))throw unavailable();const authorization=await this.auth(),url='https://content.twilio.com/v1/Content/'+contentSid;
+    const content=await json(this.fetcher,url,{method:'GET',headers:{authorization},signal});
+    const approval=await json(this.fetcher,url+'/ApprovalRequests',{method:'GET',headers:{authorization},signal});signal.throwIfAborted();
+    if(content.sid!==contentSid||approval.sid!==contentSid||content.account_sid!==this.config.accountSid||approval.account_sid!==this.config.accountSid||content.language!==language||
+      !content.types||typeof content.types!=='object'||Array.isArray(content.types)||Object.keys(content.types).length!==1||!content.types['twilio/text']||Object.keys(content.types['twilio/text']).join()!=='body'||
+      typeof content.types['twilio/text'].body!=='string'||approval.whatsapp?.status!=='approved'||approval.whatsapp?.content_type!=='twilio/text')throw unavailable();
+    const body=content.types['twilio/text'].body,variables=[...new Set<string>([...body.matchAll(/\{\{([1-9][0-9]{0,2})\}\}/g)].map((m:any)=>m[1]))].sort();
+    if(/[{}]/.test(body.replace(/\{\{([1-9][0-9]{0,2})\}\}/g,''))||!content.variables||typeof content.variables!=='object'||Array.isArray(content.variables)||JSON.stringify(Object.keys(content.variables).sort())!==JSON.stringify(variables))throw unavailable();
+    const value={accountSid:this.config.accountSid,sid:contentSid,language,body,variables,sha256:hash(JSON.stringify({accountSid:this.config.accountSid,contentSid,language,body,variables}))};
+    ApprovedTextSchema.parse({...value,revision:1,providerGeneration:'validation',checkedAt:0});return value;
+  }
   private observation(r:any,m:OutboundMessage,recordId?:string):ProviderObservation{
     if(!sid(r.sid,this.channel==='voice'?'CA':'SM')||recordId&&r.sid!==recordId||r.account_sid!==this.config.accountSid||r.to!==m.recipient||r.from!==m.sender||r.direction!=='outbound-api')return unknown();
     const s=r.status;
@@ -177,8 +212,12 @@ export class TwilioProvider implements ContactProvider {
     try{
       const m=structuredClone(message);validateMessage(m,this.channel);signal.throwIfAborted();
       if(m.sender!==canonicalRecipient(this.channel,this.config.sender)||this.channel==='voice'&&!this.config.voiceEnabled)throw unavailable();
+      if(this.channel==='whatsapp'){
+        const template=this.config.approvedText?.find(t=>t.sid===m.whatsapp?.contentSid&&t.accountSid===this.config.accountSid);
+        if(!template||renderApprovedContactText(template,m.whatsapp!.variables)!==m.body)throw unavailable();
+      }
       const authorization=await this.auth(),form=new URLSearchParams({To:m.recipient,From:m.sender});
-      if(this.channel==='voice'){form.set('Twiml','<Response><Say>'+xml(m.body)+'</Say></Response>');form.set('TimeLimit',String(m.maxVoiceSeconds));form.set('Timeout','20');}
+      if(this.channel==='voice'){const twiml='<Response><Say>'+xml(m.body)+'</Say></Response>';if(twiml.length>4000)throw unavailable();form.set('Twiml',twiml);form.set('TimeLimit',String(m.maxVoiceSeconds));form.set('Timeout','20');}
       else if(this.channel==='whatsapp'){form.set('ContentSid',m.whatsapp!.contentSid);form.set('ContentVariables',JSON.stringify(m.whatsapp!.variables));}
       else form.set('Body',m.body);
       return onceDelivery(async()=>{try{signal.throwIfAborted();return this.observation(await json(this.fetcher,this.url(),{method:'POST',headers:{authorization,'content-type':'application/x-www-form-urlencoded'},body:form.toString(),signal}),m);}catch{return unknown();}});

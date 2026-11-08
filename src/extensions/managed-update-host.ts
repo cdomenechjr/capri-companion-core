@@ -6,10 +6,10 @@ import {lstatSync,readFileSync} from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import net from 'node:net';
-import {spawn,execFile,type ChildProcessWithoutNullStreams} from 'node:child_process';
+import {spawn,execFile,execFileSync,type ChildProcessWithoutNullStreams} from 'node:child_process';
 import type {Readable,Writable} from 'node:stream';
 import {z} from 'zod';
-import {acquireProfileWriter,managedDirectory} from '../desktop/runtime-profile';
+import {acquireProfileWriter,managedDirectory,readProfileProtectionContext,readProtectionFile,prepareProtectedDesktopContext} from '../desktop/runtime-profile';
 import {canonicalJson,featureCapability,releasePolicy} from './policy';
 import {SignedUpdateEngine,UpdateStateSchema,createUpdateDisk,createPinnedUpdateTransport,inspectUpdateZip,compareUpdateVersions,type UpdateDisk,type UpdateHost,type UpdateSnapshot,type UpdateIdle,type UpdateState,type UpdateTransport} from './updates';
 import {prepareSupervisedLaunch,armSupervisedRun,cancelSupervisedRun,inspectSupervisedRun,type SupervisorControl,type SupervisorIdentity} from './supervisor';
@@ -53,17 +53,25 @@ export async function loadManagedTrust(file:string,digest:string,appData?:string
  createPinnedUpdateTransport(config.feed);
  const assert=async()=>{if(managedHash(await readManagedFile(file,65536))!==digest||config.ownerSha256!==managedOwnerSha256())throw Error('Managed trust/owner changed.');
   for(const dir of [config.root,config.profilesRoot])managedDirectory(dir,config.appData);
-  const records=[file,path.join(config.root,'host.json'),path.join(config.root,'state.json'),path.join(config.root,'backup-key.dpapi'),path.join(config.root,'control-key.dpapi'),path.join(config.profilesRoot,'.capri-managed.json')];
+  const records=[file,path.join(config.root,'host.json'),path.join(config.root,'state.json'),path.join(config.root,'protection-context.json'),path.join(config.root,'backup-key.dpapi'),path.join(config.root,'control-key.dpapi'),path.join(config.profilesRoot,'.capri-managed.json')];
   const existing:string[]=[];for(const record of records){try{const info=await fs.lstat(record);if(!info.isFile()||info.isSymbolicLink()||info.nlink!==1)throw Error('Managed authority record is aliased.');existing.push(record);}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}}
   await assertManagedProtection([config.root,config.profilesRoot,config.maintenance.root,path.dirname(file),config.attestationRoot,path.dirname(config.brokerJournal),...existing,... [config.node,config.controller,config.launcher,config.supervisor,config.windowsHelper].flatMap(p=>[path.dirname(p.path),p.path])]);
  };await assert();
  return {config,file,sha256:digest,assert};
 }
-export async function assertManagedProtection(paths:readonly string[]){
+function protectionInvocation(paths:readonly string[]){
  if(process.platform!=='win32')throw Error('Windows managed protection unavailable.');
  const encoded=Buffer.from(JSON.stringify([...new Set(paths)])).toString('base64');
  const script="$ErrorActionPreference='Stop';$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value;$allowed=@($sid,'S-1-5-18','S-1-5-32-544');$paths=ConvertFrom-Json ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('"+encoded+"')));foreach($p in $paths){$a=Get-Acl -LiteralPath $p;$owner=$a.GetOwner([Security.Principal.SecurityIdentifier]).Value;if($allowed -notcontains $owner){throw 'Foreign owner'};foreach($r in $a.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])){if($r.AccessControlType -eq 'Allow' -and ([int64]$r.FileSystemRights -band 852310) -ne 0 -and $allowed -notcontains $r.IdentityReference.Value){throw 'Foreign writable access'}}};Write-Output 'protected'";
- const result=await new Promise<string>((resolve,reject)=>execFile(path.join(process.env.SystemRoot??'C:\\Windows','System32','WindowsPowerShell','v1.0','powershell.exe'),['-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(script,'utf16le').toString('base64')],{windowsHide:true,timeout:15000,maxBuffer:4096},(e,out)=>e?reject(Error('Managed storage ownership/protection unavailable.')):resolve(out.trim())));
+ return {executable:path.join(process.env.SystemRoot??'C:\\Windows','System32','WindowsPowerShell','v1.0','powershell.exe'),args:['-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(script,'utf16le').toString('base64')]};
+}
+export function assertManagedProtectionSync(paths:readonly string[]){
+ const call=protectionInvocation(paths),result=execFileSync(call.executable,call.args,{windowsHide:true,timeout:15000,maxBuffer:4096,encoding:'utf8'}).trim();
+ if(result!=='protected')throw Error('Managed protection unconfirmed.');
+}
+export async function assertManagedProtection(paths:readonly string[]){
+ const call=protectionInvocation(paths);
+ const result=await new Promise<string>((resolve,reject)=>execFile(call.executable,call.args,{windowsHide:true,timeout:15000,maxBuffer:4096},(e,out)=>e?reject(Error('Managed storage ownership/protection unavailable.')):resolve(out.trim())));
  if(result!=='protected')throw Error('Managed protection unconfirmed.');
 }
 export function managedGeneration(config:ManagedConfig,generation:string){uuid.parse(generation);return managedDirectory(path.join(config.profilesRoot,generation),config.appData);}
@@ -85,6 +93,56 @@ export function managedDesktopData(appData:string,profile:string,maintenance:boo
  if(inside(c.root,c.profilesRoot)||inside(c.profilesRoot,c.root)||inside(c.root,file)||inside(c.profilesRoot,file))throw Error('Managed paths must remain independent.');
  if(managedGeneration(c,env.CAPRI_MANAGED_GENERATION!)!==profile)throw Error('Managed physical profile mismatch.');
  return maintenance?managedDirectory(path.join(c.root,'maintenance-electron',env.CAPRI_MANAGED_EPOCH!),appData):profile;
+}
+
+const ProtectionBinding=z.object({schemaVersion:z.literal(1),installationId:uuid,ownerSha256:sha,contextSha256:sha}).strict();
+/** Immutable, private host association; its digest covers only the selected
+ * profile's DPAPI-wrapped OSCrypt field. Existing backup keys never bootstrap it.
+ * Keep this file with the original backup-key.dpapi in the protected, stable
+ * managed root across closed copies/recovery. Complete profile archives already
+ * retain Local State; rollback never replaces this host association or the key.
+ * This is same authorized Windows-user context continuity, not a promise of
+ * cross-user/machine DPAPI portability. No browser/default-profile discovery. */
+export async function bindManagedProtectionContext(trust:ManagedTrust,generation:string,gate:{owned():boolean}){
+ const owned=()=>{if(!gate.owned())throw Error('Protection context writer ownership lost.');};owned();await trust.assert();owned();const c=trust.config,context=readProfileProtectionContext(managedGeneration(c,generation),c.appData);
+ const binding={schemaVersion:1 as const,installationId:c.installationId,ownerSha256:c.ownerSha256,contextSha256:managedHash(context)},file=path.join(c.root,'protection-context.json');
+ try{const old=ProtectionBinding.parse(JSON.parse((await readManagedFile(file,4096)).toString()));if(canonicalJson(old)!==canonicalJson(binding))throw Error('Managed protection context changed.');return;}
+ catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
+ try{await fs.lstat(path.join(c.root,'backup-key.dpapi'));throw Error('Existing backup key context unavailable.');}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
+ await trust.assert();owned();const h=await fs.open(file,'wx',0o600);try{owned();await h.writeFile(canonicalJson(binding));await h.sync();}finally{await h.close();}
+ assertManagedProfileContext(c,generation);
+}
+export function assertManagedProfileContext(c:ManagedConfig,generation:string){
+ const binding=ProtectionBinding.parse(JSON.parse(readProtectionFile(path.join(c.root,'protection-context.json'),c.appData,4096).toString()));
+ if(binding.installationId!==c.installationId||binding.ownerSha256!==c.ownerSha256||binding.contextSha256!==managedHash(readProfileProtectionContext(managedGeneration(c,generation),c.appData)))throw Error('Managed protection context mismatch.');
+}
+
+/** An elected normal owner must be the controller's CURRENT launch, before
+ * Chromium initializes the selected original profile. Duplicate election is
+ * resolved first, so an ordinary second launch still focuses and exits quietly. */
+export function assertManagedNormalStartupContext(appData:string,profile:string,env:NodeJS.ProcessEnv,gate:{owned():boolean}){
+ if(!gate.owned())throw Error('Protection context writer ownership lost.');managedDesktopData(appData,profile,false,env);
+ const c=ManagedConfigSchema.parse(JSON.parse(readProtectionFile(env.CAPRI_MANAGED_TRUST!,appData,65536).toString()));
+ const journal=JSON.parse(readProtectionFile(path.join(c.root,'host.json'),appData,1024*1024).toString()),state=UpdateStateSchema.parse(JSON.parse(readProtectionFile(path.join(c.root,'state.json'),appData,1024*1024).toString()));
+ if(journal.installationId!==c.installationId||journal.ownerSha256!==c.ownerSha256||journal.trustSha256!==env.CAPRI_MANAGED_TRUST_SHA256||journal.epoch!==env.CAPRI_MANAGED_EPOCH||journal.generation!==env.CAPRI_MANAGED_GENERATION||!['starting','quiescent'].includes(journal.phase)||!env.CAPRI_UPDATE_NONCE||state.nonce!==env.CAPRI_UPDATE_NONCE)throw Error('Stale managed normal protection selection.');
+ assertManagedProfileContext(c,env.CAPRI_MANAGED_GENERATION!);return profile;
+}
+
+/** Actual pre-ready product seam, also used by the opt-in neutral acceptance.
+ * No override context path exists: the pinned generation supplies all material. */
+export function prepareManagedDesktopContext(appData:string,profile:string,env:NodeJS.ProcessEnv,gate:{owned():boolean},assertProtection:(paths:readonly string[])=>void=assertManagedProtectionSync,signal?:AbortSignal){
+ const epochDirectory=managedDesktopData(appData,profile,true,env),directory=path.join(epochDirectory,randomUUID());
+ const c=ManagedConfigSchema.parse(JSON.parse(readProtectionFile(env.CAPRI_MANAGED_TRUST!,appData,65536).toString()));
+ const current=()=>{if(managedDesktopData(appData,profile,true,env)!==epochDirectory)throw Error('Managed selection changed.');
+  const journal=JSON.parse(readProtectionFile(path.join(c.root,'host.json'),appData,1024*1024).toString());
+  let selected=journal.generation===env.CAPRI_MANAGED_GENERATION;
+  if(!selected&&journal.failedGeneration===env.CAPRI_MANAGED_GENERATION){const state=UpdateStateSchema.parse(JSON.parse(readProtectionFile(path.join(c.root,'state.json'),appData,1024*1024).toString()));selected=state.phase==='rolling-back'&&journal.rollbackCandidateId===state.candidate?.id;}
+  if(journal.installationId!==c.installationId||journal.ownerSha256!==c.ownerSha256||journal.trustSha256!==env.CAPRI_MANAGED_TRUST_SHA256||journal.epoch!==env.CAPRI_MANAGED_EPOCH||!selected||journal.phase!=='maintenance')throw Error('Stale managed protection selection.');
+  assertManagedProfileContext(c,env.CAPRI_MANAGED_GENERATION!);
+ };
+ signal?.throwIfAborted();if(!gate.owned())throw Error('Protection context writer ownership lost.');current();
+ assertProtection([c.root,c.profilesRoot,profile,env.CAPRI_MANAGED_TRUST!,path.join(c.root,'host.json'),path.join(c.root,'protection-context.json'),path.join(profile,'Local State')]);
+ return prepareProtectedDesktopContext({profile,directory,appData,gate,assertCurrent:current,signal});
 }
 
 const NormalIdentity=z.object({pid:z.number().int().positive(),created:z.string().regex(/^\d+$/),snapshotId:uuid,generation:uuid,nonce:uuid,epoch:uuid}).strict();
@@ -498,6 +556,7 @@ export async function bootstrapManagedHost(trust:ManagedTrust,input:{generation:
   const file=path.join(c.root,'host.json');try{await fs.access(file);throw Error('Managed bootstrap already exists.');}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
   // Verify the already supplied state; never rewrite the immutable bootstrap pointer.
   const actual=UpdateStateSchema.parse(JSON.parse((await readManagedFile(path.join(c.root,'state.json'))).toString()));if(canonicalJson(actual)!==canonicalJson(state))throw Error('Existing bootstrap pointer differs.');
+  await bindManagedProtectionContext(trust,input.generation,gate);
   const marker=path.join(c.profilesRoot,'.capri-managed.json'),markerBytes=Buffer.from(canonicalJson({schemaVersion:1,trustFile:trust.file,trustSha256:trust.sha256}));
   try{const h=await fs.open(marker,'wx',0o600);try{await h.writeFile(markerBytes);await h.sync();}finally{await h.close();}}catch(error){if((error as NodeJS.ErrnoException).code!=='EEXIST'||!(await readManagedFile(marker,4096)).equals(markerBytes))throw error;}
   await writeManagedJson(file,{schemaVersion:1,installationId:c.installationId,ownerSha256:c.ownerSha256,trustSha256:trust.sha256,sequenceFloor:state.sequenceFloor,generation:input.generation,generations:[input.generation],epoch:randomUUID(),phase:'idle',backupKeyRef:'backup-key.dpapi'});

@@ -15,7 +15,8 @@ import {CursorController,PrivateCursorCache,type CursorEnvironment} from './curs
 import {SkillRegistry,SkillDraftInputSchema,skillsFeatureStatus,type SkillContext,type SkillHostFacts,type SkillMutation} from './skills';
 import {SkillExecutionBindingSchema,availableSkillVerifiers,discardPrivateSkillEvidence,observeSkillProof,type SkillExecutionBinding} from './skill-verification';
 import {SecurityScheduler,SecurityTools,validateSecurityTarget,type SecurityHost,type SecurityJournal,type SecurityJournalRecord,type SecurityScheduleContext} from './security';
-import {createContactsModule,clearContactReviews,type ContactsModuleOptions} from './contacts';
+import {createContactsModule,clearContactReviews,type ContactsModuleOptions,type ContactsDependencies} from './contacts';
+import {verificationContactReceipt} from './contact-admin';
 import {RuntimeAgents,CodexRuntimeConnection,createNativeRuntimeAgentFactory,agentJournalKind,type CodexConnectionOptions,type AgentAuthority,type AgentTaskResult,type NativeRuntimeAgentOptions,type RuntimeAgentDependencies} from './agents';
 
 /** A bounded source snapshot, never a writable view of the original project.
@@ -166,6 +167,7 @@ export class ExtensionHub {
     // Hub handle instead; all facades still use the SAME outbox Store/journals.
     const guard=(signal?:AbortSignal)=>{if(!handle)throw new ExtensionHubError('forbidden');const current=this.current(handle);current.signal.throwIfAborted();signal?.throwIfAborted();if(originHandle)this.current(originHandle).signal.throwIfAborted();return current;};
     const providers=handle?options?.providers.map(provider=>({id:provider.id,channel:provider.channel,
+      ...(provider.configurationId?{configurationId:async()=>{guard();const id=await provider.configurationId!();guard();return id;}}:{}),
       prepare:async(message:Parameters<typeof provider.prepare>[0],signal:AbortSignal)=>{
         guard(signal);const original=originHandle?this.current(originHandle).signal:undefined,scopedSignal=original?AbortSignal.any([signal,original]):signal;
         const prepared=await provider.prepare(message,scopedSignal);guard(scopedSignal);
@@ -189,6 +191,26 @@ export class ExtensionHub {
         value.execution.localOnly=value.execution.localOnly||source.localOnly;
         value.context.privateSession=value.context.privateSession||source.privateSession;
         value.context.settings=await this.readSettings();guard(context.signal);if(origin)this.current(origin);return value;}}:undefined);
+  }
+  /** In-process desktop administration only. The service never mounts this on
+   * generic HTTP. Every call retains its authenticated live Hub scope. */
+  contactAdministration(handle:HubContext){
+    const guard=()=>{const c=this.current(handle);if(c.authority!=='trusted-ui'||c.privateSession||c.localOnly||!this.options.contacts)throw new ExtensionHubError('forbidden');c.signal.throwIfAborted();return c;};
+    const ctx=guard(),module=this.makeContacts(handle);let resolver:ContactsDependencies['resolveVerification'];
+    const service=()=>module.administration(guard(),resolver?async id=>{guard();const value=await resolver!(id);guard();return value;}:undefined);
+    return {
+      beginVerification:async(id:string,resolve:NonNullable<ContactsDependencies['resolveVerification']>)=>{guard();resolver=resolve;const value=await service().beginVerification(id);guard();return value;},
+      dispatchVerification:async(id:string)=>{guard();const result=await service().dispatch(id,ctx.signal);guard();return result;},
+      completeVerification:async(id:string,code:string,route:Parameters<ReturnType<typeof service>['completeVerification']>[2])=>{guard();const result=await service().completeVerification(id,code,route);guard();return result;},
+      verifiedRoute:async(route:Parameters<ReturnType<typeof service>['verifiedRoute']>[0])=>{guard();const result=await service().verifiedRoute(route);guard();return result;},
+      reconcile:async(id:string)=>{guard();const outbox=service(),result=await outbox.reconcile(id,ctx.signal),challenge=await outbox.verificationChallenge(id);guard();return result&&challenge?verificationContactReceipt(challenge,result):result;},
+      approveRule:async(input:unknown)=>{guard();const result=await service().approve(input);guard();return result;},
+    };
+  }
+  async prepareContact(intent:Parameters<ContactsModuleOptions['resolve']>[0],handle:HubContext){
+    const ctx=this.current(handle);if(ctx.localOnly||!this.options.contacts)throw new ExtensionHubError('forbidden');
+    if(this.contactScopes.has(intent.requestId)||this.contactScopes.size>=10000)throw new ExtensionHubError('unavailable');this.contactScopes.set(intent.requestId,handle);
+    const scoped=this.makeContacts(handle);try{const result=await scoped.administration(ctx).enqueue(intent);this.current(handle);return result;}finally{await scoped.close();}
   }
   private makeAgents(){
     const options=this.options.agents;if(!options)return undefined;

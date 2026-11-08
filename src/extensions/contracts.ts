@@ -160,7 +160,7 @@ export type ContactApproval = z.infer<typeof ContactApprovalSchema>;
 /** Ephemeral, authenticated UI only. Never include in status, activity or exports. */
 export const ContactExactReviewSchema=z.object({
   requestId:IdSchema,reviewId:IdSchema,privacyEpoch:z.uuid(),reviewDigest:Sha256Schema,revision:z.number().int().positive(),expiresAt:TimestampSchema,
-  binding:ContactBindingSchema,channel:z.enum(['gmail','sms','voice','android']),destination:z.string().min(1).max(254),sender:z.string().min(1).max(254),
+  binding:ContactBindingSchema,channel:z.enum(['gmail','sms','voice','android','whatsapp']),destination:z.string().min(1).max(254),sender:z.string().min(1).max(254),
   routeLabel:z.string().max(120).optional(),
   content:z.discriminatedUnion('kind',[
     z.object({kind:z.literal('message'),subject:z.string().max(200).optional(),body:z.string().min(1).max(32768)}).strict(),
