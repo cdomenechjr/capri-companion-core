@@ -25,8 +25,10 @@ import {PrivateSessions,type Audience} from './private-sessions';
 import {StorePairedAndroidTransport} from '../extensions/paired-android';
 import {AndroidNotificationProvider} from '../extensions/contact-providers';
 import {featureCapability,canonicalJson} from '../extensions/policy';
+import type {DesktopContactOwner} from '../desktop/contact-owner';
+import {ContactAdminRequestSchema,type ContactAdminScope} from '../extensions/contact-admin';
 type Options={store:Store;adminToken:string;key:()=>string|undefined;uiPath?:string;speech?:LocalSpeech;speechOutput?:SpeechOutput;saveKey?:(key:string)=>Promise<void>;host?:(name:string,args:any,signal:AbortSignal,taskId?:string)=>Promise<any>;taskLifecycle?:(phase:'start'|'end'|'waitMs',task:any)=>any;onSettings?:(s:Settings)=>void;onEvent?:(event:any)=>void;
- onPrivacyBoundary?:()=>void;extensions?:Omit<ExtensionHubOptions,'store'|'clock'>;taskPermission?:(id:string)=>TaskPermission|undefined};
+ clock?:()=>number;onPrivacyBoundary?:()=>void;contactOwner?:DesktopContactOwner;extensions?:Omit<ExtensionHubOptions,'store'|'clock'>;taskPermission?:(id:string)=>TaskPermission|undefined};
 export const hash=(s:string)=>createHash('sha256').update(s).digest('hex');
 function equal(a:string,b:string){const x=Buffer.from(hash(a));const y=Buffer.from(hash(b));return timingSafeEqual(x,y);}
 export async function createService(options:Options){
@@ -69,12 +71,29 @@ export async function createService(options:Options){
   if(active&&(matches||exhausted)){active.controller.abort();options.speech?.cancelDetection(active.id);captureScopes.delete(owner);detectorReady=false;}
  };
  const pairedAndroid=new StorePairedAndroidTransport(store);
- const hub=await createExtensionHub({store,clock:Date.now,profile:'self-test',...options.extensions,
-  contacts:options.extensions?.contacts?{...options.extensions.contacts,providers:[...options.extensions.contacts.providers.filter(p=>p.id!=='paired-android'),new AndroidNotificationProvider(pairedAndroid)]}:undefined,
+ const contactOptions=options.contactOwner?.options??options.extensions?.contacts;
+ const hub=await createExtensionHub({store,clock:options.clock??Date.now,profile:'self-test',...options.extensions,
+  contacts:contactOptions?{...contactOptions,providers:[...contactOptions.providers.filter(p=>p.id!=='paired-android'),new AndroidNotificationProvider(pairedAndroid)]}:undefined,
+  contactsOverview:options.contactOwner?(context=>options.contactOwner!.overview(context)):options.extensions?.contactsOverview,
   listeningStatus:options.extensions?.listeningStatus??(async()=>({feature:'listening',capability:featureCapability({enabled:true,configured:!!options.speech,supported:true,ready:detectorReady,verification:detectorReady?'local-probe':'none',actions:['configure']}),listening:{state:detectorReady?'ready':'unavailable',owner:'desktop',localOnly:true}}))});
  let scheduleScope:HubContext|undefined;let scheduleController=new AbortController();
  if(options.extensions?.profile==='user')scheduleScope=hub.context(()=>({authority:'trusted-ui',privateSession:false,localOnly:true,privacyEpoch:'security-scheduler',signal:scheduleController.signal}));
- const scopeFor=(req:any,issue=true)=>{const id=principals.get(req)!;let scope=sessionScopes.get(id);if(!scope){scope={controller:new AbortController(),privateSession:false,epoch:randomUUID(),revision:0};sessionScopes.set(id,scope);}if(issue&&!scope.handle)scope.handle=hub.context(()=>({signal:scope!.controller.signal,authority:'trusted-ui',privateSession:scope!.privateSession,localOnly:false,privacyEpoch:scope!.epoch}));return scope;};
+ options.contactOwner?.bind(hub,id=>pairedAndroid.paired(id));
+ const scopeForOwner=(id:string,issue=true)=>{let scope=sessionScopes.get(id);if(!scope){scope={controller:new AbortController(),privateSession:false,epoch:randomUUID(),revision:0};sessionScopes.set(id,scope);}if(issue&&!scope.handle)scope.handle=hub.context(()=>({signal:scope!.controller.signal,authority:'trusted-ui',privateSession:scope!.privateSession,localOnly:false,privacyEpoch:scope!.epoch}));return scope;};
+ const scopeFor=(req:any,issue=true)=>scopeForOwner(principals.get(req)!,issue);
+ // In-process entry injected only into the authenticated main-window IPC handler.
+ // Never exposed through HTTP, task tools, remote desktop roles or request fields.
+ const desktopContactAdministration=async(raw:unknown,rendererCurrent:()=>void)=>{
+  rendererCurrent();if(!options.contactOwner)throw new CapriError('Desktop contact owner unavailable.',501);
+  const request=ContactAdminRequestSchema.safeParse(raw);if(!request.success)throw new CapriError('Invalid contact administration request.',400);
+  const owner=hash(options.adminToken),session=scopeForOwner(owner),epoch=session.epoch,revision=session.revision;
+  const taskId=request.data.action==='prepare-notification'?request.data.taskId:undefined,task=taskId?taskScopes.get(taskId):undefined;
+  if(taskId){const origin=taskOrigin(taskId);if(!task||!origin||origin.owner!==owner)throw new CapriError('Current task owner required.',403);taskHandle(taskId);}
+  const signal=task?AbortSignal.any([session.controller.signal,task.controller.signal]):session.controller.signal;
+  const assertCurrent=()=>{rendererCurrent();signal.throwIfAborted();if(sessionScopes.get(owner)!==session||session.epoch!==epoch||session.revision!==revision)throw new CapriError('Contact owner session ended.',409);if(taskId)taskHandle(taskId);};
+  const scope:ContactAdminScope={signal,privacyEpoch:epoch,revision,privateSession:session.privateSession||task?.privateSession===true,taskId,localOnly:task?.localOnly,assertCurrent};assertCurrent();
+  const result=await options.contactOwner.administer(request.data,scope,taskId?taskHandle(taskId):session.handle!);assertCurrent();return result;
+ };
  const retireOwner=(owner:string,all=false)=>{const scope=sessionScopes.get(owner);if(!scope)return;retireTaskOrigins(owner,!all);const owned=privateSessions.owned(owner).filter(id=>all||!!privateSessions.audience({taskId:id}));privateSessions.end(owner,scope.epoch);scope.controller.abort();scope.controller=new AbortController();scope.handle=undefined;scope.epoch=randomUUID();scope.revision++;endCapture(owner);pairedAndroid.stop(owner);for(const id of owned){assistant.controllers.get(id)?.abort();assistant.privateRequests.delete(id);assistant.privateCheckpoints.delete(id);}for(const [id,call]of voiceSessions)if(call.owner===owner)void voiceCalls.get(id)?.();};
  const taskOrigin=(id:string,expected?:TaskOrigin)=>{const origin=taskOrigins.get(id);if(expected&&origin!==expected)throw new CapriError('Task session ended.',409);if(!origin)return;const session=sessionScopes.get(origin.owner);if(origin.retired||origin.controller.signal.aborted||!session||(origin.privateSession&&session.epoch!==origin.epoch)||session.privateSession!==origin.privateSession)throw new CapriError('Task session ended.',409);return origin;};
  const taskPermission=(id:string)=>{const grant=options.taskPermission?.(id);if(!grant||grant.revoked||grant.taskId!==id){const origin=taskOrigins.get(id);if(origin)origin.retired=true;throw new CapriError('This task needs local authorization.',403);}return grant;};
@@ -91,18 +110,21 @@ export async function createService(options:Options){
    const signal=origin?AbortSignal.any([controller.signal,origin.controller.signal]):controller.signal;
    scope.handle=hub.context(()=>{taskOrigin(task.id,origin);const current=taskPermission(task.id);if(current.mode!==grant.mode||current.createdAt!==grant.createdAt||current.request!==grant.request||assistant.controllers.get(task.id)!==controller){if(origin)origin.retired=true;throw new CapriError('Task permission expired.',403);}return {signal,authority:'task',taskId:task.id,privateSession:scope.privateSession,localOnly:scope.localOnly,privacyEpoch:scope.epoch};});taskScopes.set(task.id,scope);
   }else if(phase==='end'){const scope=taskScopes.get(task.id);if(scope){
+    const origin=taskOrigins.get(task.id),session=origin&&sessionScopes.get(origin.owner);
+    if(options.contactOwner&&origin&&session)try{const revision=session.revision;await options.contactOwner.completed(task.id,{signal:scope.controller.signal,privacyEpoch:scope.epoch,revision,privateSession:scope.privateSession,
+      assertCurrent:()=>{taskHandle(task.id);if(session.revision!==revision||origin.retired||scope.controller.signal.aborted)throw new CapriError('Contact event ended.',409);}},scope.handle);}catch{/* Retain producer claims and original outbox, never retry completion events. */}
     try{if(!scope.privateSession&&!scope.localOnly&&!scope.controller.signal.aborted)for(const row of await store.list('extension:agents:request'))if(row.job?.taskId===task.id){const result=await hub.agentResult(row.job.id,scope.handle);if(result)await store.put('extension:agents:handoff',{id:result.jobId,taskId:task.id,sha256:hash(canonicalJson(result))});}}catch{/* Keep the original result/journal; absent handoff is unavailable. */}
     hub.releaseContext(scope.handle);scope.controller.abort();taskScopes.delete(task.id);}assistant.controllers.get(task.id)?.abort();await options.taskLifecycle?.(phase,task);}
   else return options.taskLifecycle?.(phase,task);
  });
  assistant.extensions={hub,context:taskHandle};
- const stopExtensions=async()=>{retireTaskOrigins();scheduleController.abort();scheduleScope=undefined;assistant.privateRequests.clear();assistant.privateCheckpoints.clear();pairedAndroid.close();for(const owner of captureOwners.keys())endCapture(owner);for(const scope of sessionScopes.values()){scope.controller.abort();scope.handle=undefined;scope.controller=new AbortController();privateSessions.end([...sessionScopes].find(([,s])=>s===scope)![0],scope.epoch);scope.epoch=randomUUID();}return hub.stop();};
+ const stopExtensions=async()=>{const contactCleanup=options.contactOwner?.boundary();retireTaskOrigins();scheduleController.abort();scheduleScope=undefined;assistant.privateRequests.clear();assistant.privateCheckpoints.clear();pairedAndroid.close();for(const owner of captureOwners.keys())endCapture(owner);for(const scope of sessionScopes.values()){scope.controller.abort();scope.handle=undefined;scope.controller=new AbortController();privateSessions.end([...sessionScopes].find(([,s])=>s===scope)![0],scope.epoch);scope.epoch=randomUUID();}const cleanup=await Promise.allSettled([contactCleanup,hub.stop()]);if(cleanup[1].status==='rejected')throw cleanup[1].reason;const report=cleanup[1].value;if(cleanup[0].status==='rejected'&&!report.errors.includes('contacts'))report.errors.push('contacts');return report;};
  assistant.stopExtensions=stopExtensions;
  const changePrivacy=(owner:string,privateSession:boolean,revision:number)=>{const scope=sessionScopes.get(owner);if(!scope)throw new CapriError('Open the session first.',409);if(!Number.isSafeInteger(revision)||revision<=scope.revision)throw new CapriError('Stale privacy transition.',409);
   // Main-panel mount synchronizes the current public flag. It advances the UI
   // revision, but is not a privacy boundary or a reason to cancel public work.
   if(!scope.privateSession&&!privateSession){scope.revision=revision;return {privateSession:false,privacyEpoch:scope.epoch};}
-  retireTaskOrigins(owner);options.onPrivacyBoundary?.();const owned=privateSessions.owned(owner);privateSessions.end(owner,scope.epoch);scope.revision=revision;scope.privateSession=privateSession;scope.epoch=randomUUID();const socket=liveSockets.get(owner);if(socket)socketOwners.set(socket,{owner,epoch:scope.epoch});scope.controller.abort();scope.controller=new AbortController();scope.handle=undefined;endCapture(owner);for(const [id,call]of voiceSessions)if(call.owner===owner)void voiceCalls.get(id)?.();hub.privacyBoundary();if(!scheduleController.signal.aborted&&options.extensions?.profile==='user')scheduleScope=hub.context(()=>({authority:'trusted-ui',privateSession:scope.privateSession,localOnly:true,privacyEpoch:scope.epoch,signal:scheduleController.signal}));for(const other of sessionScopes.values())other.handle=undefined;for(const id of owned){assistant.controllers.get(id)?.abort();assistant.privateRequests.delete(id);assistant.privateCheckpoints.delete(id);}return {privateSession:scope.privateSession,privacyEpoch:scope.epoch};};
+  void options.contactOwner?.boundary().catch(()=>{});retireTaskOrigins(owner);options.onPrivacyBoundary?.();const owned=privateSessions.owned(owner);privateSessions.end(owner,scope.epoch);scope.revision=revision;scope.privateSession=privateSession;scope.epoch=randomUUID();const socket=liveSockets.get(owner);if(socket)socketOwners.set(socket,{owner,epoch:scope.epoch});scope.controller.abort();scope.controller=new AbortController();scope.handle=undefined;endCapture(owner);for(const [id,call]of voiceSessions)if(call.owner===owner)void voiceCalls.get(id)?.();hub.privacyBoundary();if(!scheduleController.signal.aborted&&options.extensions?.profile==='user')scheduleScope=hub.context(()=>({authority:'trusted-ui',privateSession:scope.privateSession,localOnly:true,privacyEpoch:scope.epoch,signal:scheduleController.signal}));for(const other of sessionScopes.values())other.handle=undefined;for(const id of owned){assistant.controllers.get(id)?.abort();assistant.privateRequests.delete(id);assistant.privateCheckpoints.delete(id);}return {privateSession:scope.privateSession,privacyEpoch:scope.epoch};};
  assistant.speechStatus=async()=>{
   const config=await settings();const active=await assistant.router.selected();const local=options.speech?.status(config.speechEngine)||{ready:false,reason:'Local speech is not installed on this service host.'};
   const month=new Date().toISOString().slice(0,7);const remaining=config.monthlyBudget-(await store.list('usage')).filter(x=>x.month===month).reduce((sum,x)=>sum+x.amount,0);
@@ -253,7 +275,8 @@ export async function createService(options:Options){
  }catch(e:any){if(!closing)emit({type:'notice',text:'Scheduled work could not finish: '+e.message});}finally{schedulerBusy=false;}})();},30000);schedule.unref();
  for(const task of await store.list('task'))if(task.status==='running'||task.status==='waiting')await store.put('task',{...task,status:'interrupted',error:'Service restarted. Review previous actions before retrying.'});
  if(options.uiPath&&existsSync(options.uiPath))await app.register(staticFiles,{root:options.uiPath});
- app.addHook('onClose',async()=>{options.speechOutput?.stop();pairedAndroid.close();closing=true;clearInterval(schedule);desktopQueue.close();await assistant.shutdown();await hub.close();await options.speech?.close();await schedulerJob;for(const p of approvals.values())p.resolve(false);await Promise.allSettled([...voiceCalls.values()].map(close=>close()));for(const client of clients)client.close();await store.close();});
- return {app,assistant,settings,emit,approve,speech:options.speech,hub,pairedAndroid,endCapture,taskContext:taskHandle,
+ app.addHook('onClose',async()=>{options.speechOutput?.stop();pairedAndroid.close();closing=true;clearInterval(schedule);desktopQueue.close();const cleanup=await Promise.allSettled([options.contactOwner?.close(),assistant.shutdown()]);await hub.close();await options.speech?.close();await schedulerJob;for(const p of approvals.values())p.resolve(false);await Promise.allSettled([...voiceCalls.values()].map(close=>close()));for(const client of clients)client.close();await store.close();if(cleanup.some(r=>r.status==='rejected'))throw new CapriError('Extension shutdown requires recovery review.',503);});
+ return {app,assistant,settings,emit,approve,speech:options.speech,hub,pairedAndroid,endCapture,taskContext:taskHandle,desktopContactAdministration,
+  retireDesktopOwner:()=>{void options.contactOwner?.boundary().catch(()=>{});retireOwner(hash(options.adminToken),true);},
   updateActivity:()=>({task:assistant.controllers.size>0,call:voiceCalls.size>0,microphone:captureScopes.size>0})};
 }
