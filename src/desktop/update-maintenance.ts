@@ -6,7 +6,8 @@ import {randomBytes} from 'node:crypto';
 import {Store,retainPairedAndroidJournalAcrossRollback} from '../server/store';
 import {retainContactJournalAcrossRollback} from '../extensions/contacts';
 import {WindowsCursorNative} from '../extensions/cursor';
-import {ManagedChannel,managedGeneration,managedHash,readManagedFile,type ManagedTrust} from '../extensions/managed-update-host';
+import {ManagedChannel,managedGeneration,managedHash,readManagedFile,assertManagedProfileContext,type ManagedTrust} from '../extensions/managed-update-host';
+import {readProfileProtectionContext} from './runtime-profile';
 import type {acquireProfileWriter} from './runtime-profile';
 import {canonicalJson} from '../extensions/policy';
 import {z} from 'zod';
@@ -59,8 +60,9 @@ export async function createMaintenanceOperations(options:{trust:ManagedTrust;ge
  const {trust,gate,protection}=options;let closed=false;const c=trust.config,source=managedGeneration(c,options.generation);
  await trust.assert();
  if(!gate.owned()||!protection.isEncryptionAvailable())throw Error('Offline protected writer unavailable.');
- const existing=await openExistingProfile(source,protection);await existing.close();
- const ready=async()=>{await trust.assert();if(closed||!gate.owned())throw Error('Maintenance writer ownership lost.');};
+ assertManagedProfileContext(c,options.generation);
+ const ready=async()=>{await trust.assert();if(closed||!gate.owned())throw Error('Maintenance writer ownership lost.');assertManagedProfileContext(c,options.generation);};
+ const existing=await openExistingProfile(source,protection);await existing.close();await ready();
  const verify=async(bytes:Buffer)=>{parseClosedProfile(bytes);
   const data=JSON.parse(bytes.toString()) as z.infer<typeof Profile>;
   const vault=JSON.parse(protection.decryptString(Buffer.from(data.files.find(f=>f.path==='private.config')!.bytes,'base64')));
@@ -68,7 +70,7 @@ export async function createMaintenanceOperations(options:{trust:ManagedTrust;ge
   // Verify actual encrypted SQLite records using a temporary generated directory
   // outside every selected generation, then close before removing it.
   const temp=path.join(c.root,'verify-'+randomBytes(16).toString('hex'));await restoreClosedProfile(bytes,temp);
-  try{const store=await openExistingProfile(temp,protection);await store.close();}finally{await fs.rm(temp,{recursive:true,force:true});}
+  try{if(!readProfileProtectionContext(temp,c.appData).equals(readProfileProtectionContext(source,c.appData)))throw Error('Backup protection context mismatch.');const store=await openExistingProfile(temp,protection);await store.close();}finally{await fs.rm(temp,{recursive:true,force:true});}
   return true;
  };
  let tail:Promise<unknown>=Promise.resolve();
@@ -79,7 +81,7 @@ export async function createMaintenanceOperations(options:{trust:ManagedTrust;ge
    const native=new WindowsCursorNative(c.windowsHelper.path,path.join(c.appData,'capri-runtime','cursor-recovery')),session=await native.arm(15000);const reply=await session.request('close');return reply.ok===true&&!reply.recoveryRequired;
   }
   if(method==='backup-key'){const {initialize}=z.object({initialize:z.boolean()}).strict().parse(input);const file=path.join(c.root,'backup-key.dpapi');let wrapped:Buffer;
-   try{wrapped=await readManagedFile(file,65536);}catch(error){if(!initialize||(error as NodeJS.ErrnoException).code!=='ENOENT')throw error;const key=randomBytes(32);try{const encoded=key.toString('base64');wrapped=protection.encryptString(encoded);if(wrapped.includes(key)||wrapped.includes(Buffer.from(encoded)))throw Error('Backup key was not protected.');const h=await fs.open(file,'wx',0o600);try{await h.writeFile(wrapped);await h.sync();}finally{await h.close();}}finally{key.fill(0);}wrapped=await readManagedFile(file,65536);}
+   try{wrapped=await readManagedFile(file,65536);}catch(error){if(!initialize||(error as NodeJS.ErrnoException).code!=='ENOENT')throw error;await ready();const key=randomBytes(32);try{const encoded=key.toString('base64');wrapped=protection.encryptString(encoded);if(wrapped.includes(key)||wrapped.includes(Buffer.from(encoded)))throw Error('Backup key was not protected.');await ready();const h=await fs.open(file,'wx',0o600);try{await h.writeFile(wrapped);await h.sync();}finally{await h.close();}}finally{key.fill(0);}wrapped=await readManagedFile(file,65536);}
    const value=protection.decryptString(wrapped),key=Buffer.from(value,'base64');try{if(key.length!==32||key.toString('base64')!==value||wrapped.includes(key))throw Error('Protected backup key invalid.');return {key:value};}finally{key.fill(0);}
   }
   if(method==='backup'){z.object({}).strict().parse(input);const store=await openExistingProfile(source,protection);await store.close();const bytes=await captureClosedProfile(source);await verify(bytes);return {dataVersion:1,bytes:bytes.toString('base64')};}
@@ -91,7 +93,7 @@ export async function createMaintenanceOperations(options:{trust:ManagedTrust;ge
    try{recovered=await openExistingProfile(managedGeneration(c,generation),protection);await retainContactJournalAcrossRollback(failed,recovered);await retainPairedAndroidJournalAcrossRollback(failed,recovered);await recovered.verifyAll();}finally{await recovered?.close();await failed.close();}
    return {retained:true};
   }
-  if(method==='journal'){const request=z.object({operation:z.enum(['get','put','list']),generation:z.string().uuid(),kind:z.enum(['contact-outbox','contact-outbox-receipt','contact-outbox-approval','paired-android-receipt']),id:z.string().min(1).max(256).optional(),value:z.record(z.string(),z.unknown()).optional()}).strict().parse(input);
+  if(method==='journal'){const request=z.object({operation:z.enum(['get','put','list']),generation:z.string().uuid(),kind:z.enum(['contact-outbox','contact-outbox-receipt','contact-outbox-approval','contact-administration','paired-android-receipt']),id:z.string().min(1).max(256).optional(),value:z.record(z.string(),z.unknown()).optional()}).strict().parse(input);
    if(request.operation==='list'&&request.kind!=='paired-android-receipt'||request.operation==='put'&&request.generation===options.generation||request.operation!=='list'&&!request.id||request.operation==='put'&&request.value?.id!==request.id)throw Error('Invalid fixed journal operation.');
    const store=await openExistingProfile(managedGeneration(c,request.generation),protection);
    try{if(request.operation==='list')return store.list(request.kind);if(request.operation==='get')return await store.get(request.kind,request.id!)??null;return await store.put(request.kind,request.value);}finally{await store.close();}

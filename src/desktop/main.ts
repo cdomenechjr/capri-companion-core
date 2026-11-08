@@ -5,7 +5,7 @@ import {TaskAccess} from '../server/access';
 import {characterRevision} from '../character';
 import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, globalShortcut, safeStorage, dialog, Notification, session, shell } from 'electron';
 import { randomBytes,randomUUID,createHash } from 'node:crypto';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, mkdtempSync, rmSync,openSync,fsyncSync,closeSync,renameSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
@@ -23,8 +23,8 @@ import { companionAudioPermission } from './audio-permissions';
 import { companionBounds } from './companion-bounds';
 import { CompanionController } from './companion-controller';
 import { SpeechOutput,defaultSpeechPreferences } from '../server/speech-output';
-import { runtimeProfile, compiledProfileIdentity, seedProfileSettings, loginItemPolicy,acquireProfileWriter,assertManagedProfileLaunch,prepareDesktopStartup } from './runtime-profile';
-import {loadManagedTrust,managedGeneration,managedDesktopData,ManagedChannel,managedUpdateFacade,managedHash,type ManagedTrust} from '../extensions/managed-update-host';
+import { runtimeProfile, compiledProfileIdentity, seedProfileSettings, loginItemPolicy,acquireProfileWriter,claimProfileWriter,assertManagedProfileLaunch,prepareDesktopStartup,readProtectionFile } from './runtime-profile';
+import {loadManagedTrust,managedGeneration,managedDesktopData,prepareManagedDesktopContext,assertManagedProfileContext,assertManagedNormalStartupContext,ManagedConfigSchema,ManagedChannel,managedUpdateFacade,managedHash,type ManagedTrust} from '../extensions/managed-update-host';
 import {runUpdateMaintenance,openExistingProfile} from './update-maintenance';
 import { watchDevelopmentActivity } from './development-activity';
 import { registerStopShortcut } from './shortcuts';
@@ -36,6 +36,7 @@ import {codexExecutableConfiguration,packagedRuntimeResources,type PackagedRunti
 import {importAssetPack,loadAssetPack,assetPackSprites,resolveAssetPackRequest,readAssetPackFile,type LoadedAssetPack} from './asset-packs';
 import {featureCapability,canonicalJson,sha256} from '../extensions/policy';
 import {resolveSkillHostFacts} from '../extensions/skills';
+import {DesktopContactOwner,ProtectedContactVault,assertDesktopContactSender} from './contact-owner';
 import {systemPreferences} from 'electron';
 if(process.argv.includes('--check-agency'))app.commandLine.appendSwitch('force-renderer-accessibility','complete');
 app.commandLine.appendSwitch('autoplay-policy','no-user-gesture-required');
@@ -51,8 +52,22 @@ const loginItems=loginItemPolicy({development:profileConfig.development,packaged
 // async trust/ACL/gate work can yield past ready. Vault/Store access stays gated.
 assertManagedProfileLaunch(profileConfig.path);
 const managedLaunch=!!(process.env.CAPRI_MANAGED_TRUST||process.env.CAPRI_MANAGED_TRUST_SHA256||maintenanceOnly);
-const desktopData=managedLaunch?managedDesktopData(app.getPath('appData'),profileConfig.path,maintenanceOnly):selfTest||uiSmoke?(smokeDirectory=mkdtempSync(path.join(os.tmpdir(),'capri-self-test-'))):profileConfig.path;
+let desktopData=managedLaunch?managedDesktopData(app.getPath('appData'),profileConfig.path,maintenanceOnly):selfTest||uiSmoke?(smokeDirectory=mkdtempSync(path.join(os.tmpdir(),'capri-self-test-'))):profileConfig.path;
+function claimManagedStartupWriter(){
+ const config=ManagedConfigSchema.parse(JSON.parse(readProtectionFile(process.env.CAPRI_MANAGED_TRUST!,app.getPath('appData'),65536).toString()));
+ try{writerGate=claimProfileWriter(config);if(!maintenanceOnly)assertManagedNormalStartupContext(app.getPath('appData'),profileConfig.path,process.env,writerGate);}catch(error){void writerGate?.close();app.exit(1);throw error;}
+}
+if(maintenanceOnly){
+ claimManagedStartupWriter();
+ try{desktopData=prepareManagedDesktopContext(app.getPath('appData'),profileConfig.path,process.env,writerGate!);}catch(error){void writerGate!.close();app.exit(1);throw error;}
+}else if(managedLaunch){
+ const config=ManagedConfigSchema.parse(JSON.parse(readProtectionFile(process.env.CAPRI_MANAGED_TRUST!,app.getPath('appData'),65536).toString()));
+ assertManagedProfileContext(config,process.env.CAPRI_MANAGED_GENERATION!);
+}
 const ownsDesktopInstance=prepareDesktopStartup(app,desktopData,!maintenanceOnly&&!selfTest&&!uiSmoke,()=>panel?.show());
+// Preserve ordinary duplicate focus/election, but never yield the elected
+// managed normal owner's Chromium initialization past the stable writer claim.
+if(managedLaunch&&!maintenanceOnly&&ownsDesktopInstance)claimManagedStartupWriter();
 function cleanSmoke(){if(smokeDirectory&&path.dirname(smokeDirectory)===os.tmpdir()&&path.basename(smokeDirectory).startsWith('capri-self-test-'))try{rmSync(smokeDirectory,{recursive:true,force:true});}catch{/* Chromium may still hold its temporary cache until process exit. */}}
 let panel:BrowserWindow,avatar:BrowserWindow,tray:Tray,local:any,host:HostTools;let token='',baseUrl='',localUrl='';let remoteSocket:WebSocket|undefined,workerTimer:NodeJS.Timeout|undefined;const workerControllers=new Map<string,AbortController>();let quitting=false,voiceSpeaking=false;let wake:any,wakeStream:any;
 let companion:CompanionController|undefined;let speechOutput:SpeechOutput;let speechSettings:any;
@@ -95,7 +110,7 @@ async function main(){
   managedTrust=await loadManagedTrust(process.env.CAPRI_MANAGED_TRUST!,process.env.CAPRI_MANAGED_TRUST_SHA256!,app.getPath('appData'));
   if(!/^[0-9a-f-]{36}$/i.test(process.env.CAPRI_MANAGED_EPOCH??'')||!/^[a-f0-9]{64}$/.test(process.env.CAPRI_MANAGED_CHANNEL??''))throw Error('Captured managed context required.');
   if(managedGeneration(managedTrust.config,process.env.CAPRI_MANAGED_GENERATION!)!==profileConfig.path)throw Error('Managed physical profile mismatch.');
-  writerGate=await acquireProfileWriter(managedTrust.config);
+  writerGate??=await acquireProfileWriter(managedTrust.config);
   if(maintenanceOnly){
    // Chromium's incidental files belong outside the closed profile. This branch
    // returns before vault seeding, service creation, windows, audio and providers.
@@ -108,6 +123,12 @@ async function main(){
  if(managedTrust){await managedTrust.assert();if(!writerGate?.owned())throw Error('Managed writer ownership lost before vault access.');}
  const dir=app.getPath('userData');mkdirSync(dir,{recursive:true});vaultFile=path.join(dir,'private.config');if(existsSync(vaultFile)){if(!safeStorage.isEncryptionAvailable())throw Error('Windows protected storage is unavailable.');vault=JSON.parse(safeStorage.decryptString(readFileSync(vaultFile)));}else{if(managedTrust)throw Error('Managed existing vault missing.');vault={storageKey:randomBytes(32).toString('base64'),adminToken:randomBytes(32).toString('hex')};saveVault();}
  const store=managedStore=managedTrust?await openExistingProfile(dir,safeStorage):await new Store(path.join(dir,'data'),Buffer.from(vault.storageKey,'base64')).init();
+ const assertContactStorage=()=>{if(quitting||managedClosing||writerGate&&!writerGate.owned()||!safeStorage.isEncryptionAvailable())throw Error('Protected contact storage unavailable.');};
+ const contactVault=new ProtectedContactVault({
+  read:()=>{assertContactStorage();return JSON.parse(safeStorage.decryptString(readFileSync(vaultFile)));},
+  write:value=>{assertContactStorage();const bytes=safeStorage.encryptString(JSON.stringify(value)),temporary=vaultFile+'.contact-'+randomUUID()+'.tmp',fd=openSync(temporary,'wx',0o600);try{writeFileSync(fd,bytes);fsyncSync(fd);}finally{closeSync(fd);}renameSync(temporary,vaultFile);vault=value;const observed=JSON.parse(safeStorage.decryptString(readFileSync(vaultFile)));if(canonicalJson(observed)!==canonicalJson(value))throw Error('Protected contact readback failed.');vault=observed;}
+ });
+ const contactOwner=new DesktopContactOwner({store,vault:contactVault,openAuthorization:async url=>{if(quitting||!panel||panel.isDestroyed())throw Error('Main contact owner unavailable.');await shell.openExternal(url);}});
  if(managedTrust){
   const trust=managedTrust,epoch=process.env.CAPRI_MANAGED_EPOCH!,nonce=process.env.CAPRI_UPDATE_NONCE!,generation=process.env.CAPRI_MANAGED_GENERATION!;
   let activate!:()=>void;const activation=new Promise<void>(resolve=>{activate=resolve;});let activated=false;
@@ -182,7 +203,7 @@ async function main(){
  speechSettings=(await store.get('desktop','speech'))?.preferences||{};fullComputerAccess=!!(await store.get('desktop','agency'))?.fullComputerAccess;taskAccess.setMode(fullComputerAccess?'full':'scoped');
  speechOutput=new SpeechOutput({directory:path.join(dir,'voice-cache'),key:()=>vault.elevenLabsKey||process.env.ELEVENLABS_API_KEY,saveKey:async key=>{vault.elevenLabsKey=key;saveVault();},preferences:speechPreferences,local:(text,p,signal)=>speech.speak(text,p.localVoice,p.speed,p.localEngine,signal),reserve:async text=>{const rate=Number(speechSettings.costPer1000Characters);if(!Number.isFinite(rate)||rate<=0)throw Error('Set an ElevenLabs cost allowance per 1,000 characters in Settings before paid speech.');return remoteRequest('POST','/v1/usage/reserve',{category:'elevenlabs',amount:Math.ceil(text.length*rate/1000*1e6)/1e6});},settle:async(id,amount)=>{await remoteRequest('POST','/v1/usage/settle',{id,amount});}});
  if(uiSmoke){await store.put('settings',{...initialSettings,localFallback:false,initiative:false});await store.put('desktop',{id:'companion',preferences:{mode:'call',sitOnWindows:true,gameApps:[]}});}
- local=await createService({onPrivacyBoundary:()=>{applyGeneration++;reviewedChanges.clear();for(const controller of applyControllers)controller.abort();},extensions:extensionOptions,taskPermission:id=>host?.access.get(id),store,adminToken:vault.adminToken,key:()=>vault.apiKey||process.env.OPENAI_API_KEY,uiPath:path.join(__dirname,'ui'),speech,speechOutput,saveKey:async key=>{vault.apiKey=key;saveVault();},onEvent:broadcast,host:async(name,args,signal,taskId)=>host.run(name,args,signal,taskId),taskLifecycle:async(phase,task)=>{if(phase==='start'){if(!host.access.get(task.id)){const accepted=await dialog.showMessageBox(panel,{type:'question',title:'Capri task authorization',message:'Allow this task to use local tools?',detail:String(task.text),buttons:['Decline','Allow task'],defaultId:0,cancelId:0});if(accepted.response!==1)throw Error('Local task authorization declined.');host.begin(task.id,task.text);}}else if(phase==='end')host.end(task.id);else return host.access.waitingMs.get(task.id)||0;},onSettings:s=>{loginItems.apply(s.startAtLogin);companion?.setScale(s.avatarScale);broadcast({type:'settings'});}});
+ local=await createService({contactOwner,onPrivacyBoundary:()=>{applyGeneration++;reviewedChanges.clear();for(const controller of applyControllers)controller.abort();},extensions:extensionOptions,taskPermission:id=>host?.access.get(id),store,adminToken:vault.adminToken,key:()=>vault.apiKey||process.env.OPENAI_API_KEY,uiPath:path.join(__dirname,'ui'),speech,speechOutput,saveKey:async key=>{vault.apiKey=key;saveVault();},onEvent:broadcast,host:async(name,args,signal,taskId)=>host.run(name,args,signal,taskId),taskLifecycle:async(phase,task)=>{if(phase==='start'){if(!host.access.get(task.id)){const accepted=await dialog.showMessageBox(panel,{type:'question',title:'Capri task authorization',message:'Allow this task to use local tools?',detail:String(task.text),buttons:['Decline','Allow task'],defaultId:0,cancelId:0});if(accepted.response!==1)throw Error('Local task authorization declined.');host.begin(task.id,task.text);}}else if(phase==='end')host.end(task.id);else return host.access.waitingMs.get(task.id)||0;},onSettings:s=>{loginItems.apply(s.startAtLogin);companion?.setScale(s.avatarScale);broadcast({type:'settings'});}});
  loginItems.protectSettings(local.app,local.settings);
  if(managedClosing){await local.app.close();return;}
  if(vault.assetPackId){const assetScope=new AbortController();const handle=local.hub.context(()=>({authority:'trusted-ui',privateSession:false,localOnly:false,privacyEpoch:'asset-startup',signal:assetScope.signal}));try{const loaded=await loadAssetPack(vault.assetPackId,(await local.hub.settings(handle)).assets,packOptions);if(loaded.status==='ready')selectedPack=loaded.pack;}finally{local.hub.releaseContext(handle);}}
@@ -198,7 +219,7 @@ async function main(){
  panel=new BrowserWindow({width:1220,height:830,minWidth:900,minHeight:640,backgroundColor:'#101110',title:'Capri — Project Capricorn',show:false,autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}});secureWindow(panel);panel.on('close',event=>{if(!quitting){event.preventDefault();panel.hide();}});
  // A destroyed/replaced audio owner cannot keep a detector generation alive.
  // Presentation signals below deliberately have no such authority.
- const retireRendererCapture=()=>local.endCapture(createHash('sha256').update(vault.adminToken).digest('hex'));
+ const retireRendererCapture=()=>{local.endCapture(createHash('sha256').update(vault.adminToken).digest('hex'));local.retireDesktopOwner();};
  panel.webContents.on('render-process-gone',retireRendererCapture);
  panel.webContents.on('did-start-navigation',(_event,_url,inPlace,mainFrame)=>{if(mainFrame&&!inPlace)retireRendererCapture();});
  const settings=await local.settings();if(managedClosing)return;avatar=new BrowserWindow({width:Math.round(330*settings.avatarScale),height:Math.round(510*settings.avatarScale),transparent:true,frame:false,alwaysOnTop:true,resizable:false,skipTaskbar:true,show:false,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}});secureWindow(avatar);avatar.setBounds(companionBounds(require('electron').screen.getPrimaryDisplay().workArea,settings.avatarScale));
@@ -234,7 +255,9 @@ async function main(){
   return remoteRequest(method,route,body);
  });
  const trusted=(sender:number)=>[panel.webContents.id,avatar.webContents.id].includes(sender);
- ipcMain.handle('capri:agency',async(event,action,args)=>{if(!trusted(event.sender.id))throw Error('Untrusted client.');if(action==='openAgentWorkspace'){if(event.sender.id!==panel.webContents.id)throw Error('The main owner is required.');const result=await requestService(localUrl,vault.adminToken,'GET','/v1/extensions/agents/results/'+encodeURIComponent(String(args?.jobId)));const entry=result&&staged.get(result.workspaceId);if(!entry||entry.taskId!==result.taskId)throw Error('Snapshot unavailable.');const error=await shell.openPath(entry.workspace.root);if(error)throw Error('Snapshot could not be opened.');return {opened:true,jobId:result.jobId};}
+ ipcMain.handle('capri:agency',async(event,action,args)=>{if(!trusted(event.sender.id))throw Error('Untrusted client.');
+ if(action==='contacts'){const frame=event.senderFrame;const assertMain=()=>{if(event.senderFrame!==frame||writerGate&&!writerGate.owned())throw Error('Contact renderer changed.');assertDesktopContactSender(event,panel,localUrl,quitting||managedClosing);};assertMain();if(managedTrust)await managedTrust.assert();assertMain();return local.desktopContactAdministration(args,assertMain);}
+ if(action==='openAgentWorkspace'){if(event.sender.id!==panel.webContents.id)throw Error('The main owner is required.');const result=await requestService(localUrl,vault.adminToken,'GET','/v1/extensions/agents/results/'+encodeURIComponent(String(args?.jobId)));const entry=result&&staged.get(result.workspaceId);if(!entry||entry.taskId!==result.taskId)throw Error('Snapshot unavailable.');const error=await shell.openPath(entry.workspace.root);if(error)throw Error('Snapshot could not be opened.');return {opened:true,jobId:result.jobId};}
  if(action==='reviewAgentChanges'||action==='applyAgentChanges'){const generation=applyGeneration;return serializeApply(async()=>{const controller=new AbortController();applyControllers.add(controller);let ownedTaskId:string|undefined;const check=()=>{controller.signal.throwIfAborted();if(generation!==applyGeneration)throw Error('The review was stopped.');};try{check();
  if(event.sender.id!==panel.webContents.id||typeof args?.jobId!=='string'||!/^[a-zA-Z0-9._:-]{1,128}$/.test(args.jobId))throw Error('An explicit main-window review is required.');
  const currentSession=async()=>requestService(localUrl,vault.adminToken,'GET','/v1/extensions/session');

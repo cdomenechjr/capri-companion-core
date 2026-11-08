@@ -1,5 +1,5 @@
 import path from 'node:path';
-import {lstatSync, mkdirSync, realpathSync,readFileSync} from 'node:fs';
+import {lstatSync, mkdirSync, realpathSync,readFileSync,openSync,closeSync,fstatSync,writeFileSync,fsyncSync,rmSync} from 'node:fs';
 import type {FastifyInstance} from 'fastify';
 import type {Store} from '../server/store';
 import {defaults} from '../shared';
@@ -21,13 +21,69 @@ export function prepareDesktopStartup(app:{setPath(name:string,value:string):voi
 /** OS ownership is the listening handle, never a connection or a PID file. The
  * trusted installation identity stays fixed when the selected directory changes. */
 export async function acquireProfileWriter(identity:{installationId:string;ownerSha256:string}):Promise<{owned():boolean;close():Promise<void>}> {
+ const writer=startProfileWriter(identity);await writer.ready;return writer.gate;
+}
+
+/** Named-pipe bind is synchronous in Node. Fail closed if the listening handle
+ * was not acquired immediately; never yield Electron initialization past a copy. */
+export function claimProfileWriter(identity:{installationId:string;ownerSha256:string}):{owned():boolean;close():Promise<void>} {
+ const writer=startProfileWriter(identity);
+ if(!writer.gate.owned()){void writer.gate.close().catch(()=>{});throw Object.assign(Error('Stable profile writer could not be acquired synchronously.'),{code:'EADDRINUSE'});}
+ return writer.gate;
+}
+function startProfileWriter(identity:{installationId:string;ownerSha256:string}){
  if(!/^[0-9a-f-]{36}$/i.test(identity.installationId)||!/^[a-f0-9]{64}$/.test(identity.ownerSha256))throw Error('Invalid stable profile owner.');
  const name=createHash('sha256').update('capri-profile-writer-v1\0'+identity.ownerSha256+'\0'+identity.installationId.toLowerCase()).digest('hex');
  const address=process.platform==='win32'?'\\\\.\\pipe\\capri-writer-'+name:path.join('/tmp','capri-writer-'+name+'.sock');
  const server=net.createServer(socket=>socket.destroy());let closed=false;
- await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen({path:address,exclusive:true},()=>{server.removeListener('error',reject);resolve();});});
- server.on('error',()=>{closed=true;});
- return {owned:()=>!closed&&server.listening,close:async()=>{if(closed)return;closed=true;await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve()));}};
+ let resolve!:()=>void,reject!:(error:Error)=>void;const ready=new Promise<void>((yes,no)=>{resolve=yes;reject=no;});void ready.catch(()=>{});
+ server.once('listening',resolve);server.on('error',error=>{closed=true;reject(error);});
+ server.listen({path:address,exclusive:true});
+ const gate={owned:()=>!closed&&server.listening,close:async()=>{if(closed)return;closed=true;await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve()));}};
+ return {gate,ready};
+}
+
+/** Read only the selected profile, with no default-profile discovery. These
+ * bytes are the Windows OSCrypt sync context, not a portable encryption key.
+ * Electron 45 safeStorage delegates v10 to OSCrypt; only encrypted_key is used.
+ * https://github.com/electron/electron/blob/v45.0.0/shell/browser/api/electron_api_safe_storage.cc
+ * No Chromium preferences, flags, permissions or account data are copied. */
+export function readProfileProtectionContext(directory:string,appData:string):Buffer {
+ // JSON.parse may quote private Local State input in its message. Do not attach
+ // that error (or a cause) to the bounded startup failure shown to the owner.
+ const state=readProtectionFile(path.join(managedDirectory(directory,appData),'Local State'),appData);
+ let value:any;try{value=JSON.parse(state.toString('utf8'));}
+ catch{throw Error('Selected protection context unavailable.');}
+ const key=value?.os_crypt?.encrypted_key;
+ if(typeof key!=='string'||key.length>16384)throw Error('Selected protection context unavailable.');
+ const bytes=Buffer.from(key,'base64');
+ if(bytes.length<6||bytes.toString('base64')!==key||bytes.subarray(0,5).toString()!=='DPAPI')throw Error('Selected protection context invalid.');
+ return Buffer.from(JSON.stringify({os_crypt:{encrypted_key:key}}));
+}
+
+export function readProtectionFile(file:string,appData:string,max=1024*1024):Buffer {
+ if(!path.isAbsolute(file)||path.resolve(file)!==file)throw Error('Canonical protection file required.');
+ managedDirectory(path.dirname(file),appData);
+ const before=lstatSync(file);if(!before.isFile()||before.isSymbolicLink()||before.nlink!==1||before.size>max)throw Error('Protection file is aliased or invalid.');
+ const fd=openSync(file,'r');try{const opened=fstatSync(fd),bytes=readFileSync(fd),after=lstatSync(file);
+  if([opened,after].some(info=>info.ino!==before.ino||info.dev!==before.dev||info.size!==before.size||info.mtimeMs!==before.mtimeMs||info.ctimeMs!==before.ctimeMs||info.nlink!==1)||bytes.length!==before.size)throw Error('Protection file changed.');
+  managedDirectory(path.dirname(file),appData);return bytes;
+ }finally{closeSync(fd);}
+}
+
+/** Must run in the synchronous entry prefix, under the stable writer and trusted
+ * selection checks, BEFORE setPath/ready. Each helper gets an exclusive writable
+ * directory; the closed source is never opened by Chromium. */
+export function prepareProtectedDesktopContext(options:{profile:string;directory:string;appData:string;gate:{owned():boolean};assertCurrent():void;signal?:AbortSignal}):string {
+ const {profile,directory,appData,gate,signal}=options;
+ const check=()=>{signal?.throwIfAborted();if(!gate.owned())throw Error('Protection context writer ownership lost.');options.assertCurrent();};
+ check();managedDirectory(directory,appData);const relative=path.relative(profile,directory),reverse=path.relative(directory,profile);
+ if(!relative||!reverse||!relative.startsWith('..'+path.sep)||!reverse.startsWith('..'+path.sep))throw Error('Independent protection context directory required.');
+ const bytes=readProfileProtectionContext(profile,appData);check();
+ mkdirSync(path.dirname(directory),{recursive:true});check();mkdirSync(directory,{mode:0o700});
+ try{check();const file=path.join(directory,'Local State'),fd=openSync(file,'wx',0o600);try{writeFileSync(fd,bytes);fsyncSync(fd);}finally{closeSync(fd);}check();
+  if(!readProtectionFile(file,appData).equals(bytes))throw Error('Protection context readback failed.');return directory;
+ }catch(error){rmSync(directory,{recursive:true,force:true});throw error;}
 }
 
 /** Strict spelling check is used for managed roots, including missing tails.
