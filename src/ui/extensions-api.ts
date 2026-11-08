@@ -1,9 +1,11 @@
 import {z} from 'zod';
 import {
-  ActionReceiptSchema,AgentJobSchema,AgentProviderSchema,ContactBindingSchema,ContactExactReviewSchema,ContactReviewApprovalInputSchema,CursorSettingsSchema,DeliveryReceiptSchema,ExtensionSettingsSchema,ExtensionStatusSchema,
-  IdSchema,CodexConnectionSchema,CodexModelSchema,ReleaseVersionSchema,SecurityJobSchema,SecuritySettingsSchema,Sha256Schema,SkillManifestSchema,
-  type ActionReceipt,type AgentJob,type ContactBinding,type CursorStatus,type DeliveryReceipt,type ExtensionError,type ExtensionFeature,type ExtensionStatus,type FeatureCapability,type SecurityJob,
+  ActionReceiptSchema,AgentJobSchema,AgentProviderSchema,ContactBindingSchema,ContactExactReviewSchema,ContactIntentSchema,ContactReviewApprovalInputSchema,CursorSettingsSchema,DeliveryReceiptSchema,ExtensionSettingsSchema,ExtensionStatusSchema,
+  IdSchema,CodexConnectionSchema,CodexModelSchema,ReleaseVersionSchema,SecurityJobSchema,SecuritySettingsSchema,Sha256Schema,SkillManifestSchema,TimestampSchema,
+  type ActionReceipt,type AgentJob,type ContactBinding,type ContactIntent,type CursorStatus,type DeliveryReceipt,type ExtensionError,type ExtensionFeature,type ExtensionStatus,type FeatureCapability,type SecurityJob,
 } from '../extensions/contracts';
+// Type only: the server administration module imports Node crypto and is never bundled into the renderer.
+import type {ContactAdminRequestSchema} from '../extensions/contact-admin';
 import {redactActivity} from '../development';
 import {displayTaskId} from './agent-activity';
 
@@ -59,7 +61,6 @@ export const olderServiceMessage='This Capri service does not provide 0.7 extens
 // ---- action inputs (strict; the service validates again) --------------------------------------
 const empty=z.object({}).strict();
 const id=IdSchema;
-const secret=z.string().min(8).max(4096);
 const windowsPath=z.string().max(240).refine(v=>/^[A-Za-z]:\\/.test(v)&&!/[\x00-\x1f\x7f*?"<>|/]/.test(v)&&!v.slice(2).includes(':')&&
   !v.split('\\').slice(1).some(p=>p==='.'||p==='..'||/[. ]$/.test(p)||/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(p)),{message:'Choose an absolute local Windows file or folder path.'});
 const lines=(max:number,each:number)=>z.array(z.string().trim().min(1).max(each)).min(1).max(max);
@@ -88,18 +89,11 @@ export const uiActionSchemas={
   'security/update-signatures':empty,
   'security/inspect':z.object({jobId:id}).strict(),
   'security/cancel':z.object({jobId:id}).strict(),
+  // Feature switches only. Credentials, recipients, verification, limits and rules use the
+  // desktop main-owner administration bridge below, never generic extension HTTP.
   'contacts/configure':z.object({enabled:z.boolean(),automaticEnabled:z.boolean()}).strict(),
-  'contacts/configure-gmail':z.object({clientId:z.string().trim().min(10).max(300).regex(/^[A-Za-z0-9._-]+$/),sender:z.email().max(254),clientSecret:secret.optional()}).strict(),
-  'contacts/configure-twilio':z.object({accountSid:z.string().regex(/^AC[0-9a-fA-F]{32}$/),sender:z.string().regex(/^\+[1-9]\d{6,14}$/),authToken:secret.optional(),voiceEnabled:z.boolean()}).strict(),
-  'contacts/verify-begin':z.object({routeId:id}).strict(),
-  // The service resolves the route's open challenge; the UI never handles challenge secrets.
-  'contacts/verify-complete':z.object({routeId:id,code:z.string().regex(/^\d{4,10}$/)}).strict(),
-  'contacts/add-rule':z.object({routeId:id,workflowId:id,templateId:id,expiresInDays:z.number().int().min(1).max(90)}).strict(),
-  'contacts/revoke-rule':z.object({ruleId:id}).strict(),
-  'contacts/budget':z.object({monthlyMessageLimit:z.number().int().min(0).max(10000)}).strict(),
   // Bound to the exact review the user saw; built only by approvalInput() from a current ContactReview.
   'contacts/approve':ContactReviewApprovalInputSchema,
-  'contacts/reconcile':z.object({requestId:id}).strict(),
   'agents/configure':z.object({codexEnabled:z.boolean(),claudeApiEnabled:z.boolean()}).strict(),
   'agents/connect-codex':empty,
   'agents/inspect-codex':empty,
@@ -119,8 +113,8 @@ export type UiActionInput<A extends UiAction>=z.input<typeof uiActionSchemas[A]>
 /** Actions whose envelope carries the current task ID (correlation only; the service resolves the grant). */
 export const taskScopedActions:readonly UiAction[]=['agents/grant','agents/start','agents/inspect','agents/cancel'];
 type Effect='read'|'settings'|'effect';
-const readActions=new Set<UiAction>(['skills/list','security/inspect','contacts/reconcile','agents/inspect','updates/check','security/health']);
-const settingsActions=new Set<UiAction>(['cursor/configure','security/configure','contacts/configure','contacts/configure-gmail','contacts/configure-twilio','contacts/budget','agents/configure','agents/select-codex-model','updates/configure']);
+const readActions=new Set<UiAction>(['skills/list','security/inspect','agents/inspect','updates/check','security/health']);
+const settingsActions=new Set<UiAction>(['cursor/configure','security/configure','contacts/configure','agents/configure','agents/select-codex-model','updates/configure']);
 export const actionEffect=(action:UiAction):Effect=>readActions.has(action)?'read':settingsActions.has(action)?'settings':'effect';
 const confirmedText:Partial<Record<UiAction,string>>={
   'cursor/import':'Cursor pack imported privately and validated by the service.',
@@ -128,8 +122,6 @@ const confirmedText:Partial<Record<UiAction,string>>={
   'skills/review':'Review recorded for this exact manifest.',
   'skills/revoke':'Review revoked.',
   'security/cancel':'Monitoring cancellation recorded. Defender may still finish its own scan.',
-  'contacts/verify-begin':'Verification challenge sent by the provider.',
-  'contacts/verify-complete':'Recipient verified by the service.',
   'contacts/approve':'Approval recorded for this exact request. This is not a delivery receipt.',
   'agents/grant':'Task grant recorded.',
   'agents/cancel':'Cancellation observed.',
@@ -423,7 +415,7 @@ export const ContactsOverviewSchema=z.object({
   providers:z.array(z.object({channel:z.enum(['gmail','sms','voice','whatsapp']),configured:z.boolean(),secretStored:z.boolean(),senderHint:label.optional()})).max(4),
   routes:z.array(z.object({id,revision:z.number().int().positive(),channel:z.enum(['gmail','sms','voice','whatsapp','android']),kind:z.enum(['self','contact']),label,enabled:z.boolean(),verified:z.boolean(),verificationExpiresAt:z.number().int().nonnegative().optional()})).max(100),
   rules:z.array(z.object({id,routeId:id,workflowId:id,templateId:id,expiresAt:z.number().int().nonnegative(),revoked:z.boolean()})).max(100),
-  budget:z.object({monthlyMessageLimit:z.number().int().nonnegative(),usedThisMonth:z.number().int().nonnegative().nullable()}).optional(),
+  // No monthly-count budget is read or shown: the enforced limits come from the administration status.
   outbox:z.array(z.object({receipt:DeliveryReceiptSchema,channel:z.enum(['gmail','sms','voice','whatsapp','android']),routeLabel:label.optional(),draftKept:z.boolean(),approvalRequired:z.boolean()})).max(100),
 });
 export const AgentsOverviewSchema=z.object({
@@ -440,6 +432,17 @@ export const overviewSchemas={skills:SkillCatalogSchema,security:SecurityOvervie
  */
 export const ContactReviewSchema=ContactExactReviewSchema;
 export type ContactReview=z.infer<typeof ContactReviewSchema>&{localEpoch?:PrivacyEpoch};
+/**
+ * The host-verified approved WhatsApp text inside a WhatsApp exact review's message body. A ContentSid alone is not
+ * the recipient's message, so a WhatsApp review that does not carry this exact shape is not shown or approvable.
+ */
+export const WhatsAppReviewSchema=z.object({renderedText:z.string().min(1).max(1600),contentSid:z.string().regex(/^HX[0-9a-fA-F]{32}$/),
+  variables:z.record(z.string().regex(/^[1-9][0-9]{0,2}$/),z.string().max(1600)),language:z.string().regex(/^[a-z]{2,3}(?:_[A-Z]{2})?$/),templateSha256:Sha256Schema}).strict();
+export type WhatsAppReview=z.infer<typeof WhatsAppReviewSchema>;
+export function whatsAppReview(review:Pick<ContactReview,'channel'|'content'>):WhatsAppReview|undefined {
+  if(review.channel!=='whatsapp'||review.content.kind!=='message')return undefined;
+  try{const parsed=WhatsAppReviewSchema.safeParse(JSON.parse(review.content.body));return parsed.success?parsed.data:undefined;}catch{return undefined;}
+}
 export type ReviewView={kind:'ready';review:ContactReview}|{kind:'unsupported'|'error';message:string};
 const sameBinding=(a:ContactBinding,b:ContactBinding)=>(Object.keys(a) as (keyof ContactBinding)[]).every(k=>a[k]===b[k])&&Object.keys(a).length===Object.keys(b).length;
 /** Reads the exact details for one outbox request. A reply for another request, binding or epoch is refused. */
@@ -461,6 +464,8 @@ export async function readContactReview(request:ExtensionRequest,outbox:Delivery
   const review=parsed.data;
   if(options.current?.()===false||review.expiresAt<=Date.now()||review.requestId!==outbox.requestId||review.privacyEpoch!==epoch||!sameBinding(review.binding,outbox.binding))
     return {kind:'error',message:'The details did not match this message or session. Approval stays off.'};
+  if(review.channel==='whatsapp'&&!whatsAppReview(review))
+    return {kind:'error',message:'The approved WhatsApp template text could not be shown, so this message cannot be approved. Recheck the template in setup.'};
   return {kind:'ready',review:{...review,localEpoch:privacyEpoch}};
 }
 /** Current only for the same outbox request, binding and privacy epoch. Any refresh or boundary drops it upstream. */
@@ -534,6 +539,454 @@ export function createContactReviewController(options:{request:ExtensionRequest;
   };
   return controller;
 }
+
+// ---- contact administration (desktop main-owner bridge only) ----------------------------------
+/**
+ * Credentials, recipients, verification, limits, templates, workflows and rules go only through the main view's
+ * injected window.capri.agency('contacts', request) bridge; the service supplies session UUID, signal and authority.
+ * `expectedRevision` is the revision of the last administration status this view observed.
+ */
+export type ContactAdminRequest=z.input<typeof ContactAdminRequestSchema>;
+/**
+ * The dispatching view's privacy epoch and liveness. The bridge rechecks both immediately before the IPC call (after
+ * any privacy synchronization) and throws ContactAdminNotDispatched instead of acting for a retired view.
+ */
+export interface ContactAdminFence {epoch?:PrivacyEpoch;live:()=>boolean}
+export type ContactAdminBridge=(request:ContactAdminRequest,fence:ContactAdminFence)=>Promise<unknown>;
+/** Thrown by a trusted bridge that refused to dispatch because its view or privacy epoch was retired first. */
+export class ContactAdminNotDispatched extends Error {constructor(){super('Contact administration was not dispatched.');this.name='ContactAdminNotDispatched';}}
+/**
+ * The main window's bridge: waits for the existing privacy synchronization, then dispatches only if the requesting
+ * view is still live and its epoch is still the renderer's current privacy epoch (Stop and privacy changes advance it).
+ */
+export function createMainContactBridge(options:{agency:(request:ContactAdminRequest)=>Promise<unknown>;epoch:()=>PrivacyEpoch;privacySync:()=>Promise<unknown>}):ContactAdminBridge {
+  return async(request,fence)=>{
+    const current=()=>fence.epoch===options.epoch()&&fence.live();
+    if(!current())throw new ContactAdminNotDispatched();
+    // A failed privacy synchronization dispatches nothing: the owner's session state could be stale.
+    try{await options.privacySync();}catch{throw new ContactAdminNotDispatched();}
+    if(!current())throw new ContactAdminNotDispatched();
+    return options.agency(request);
+  };
+}
+export const contactSetupUnavailableMessage='Contact setup is available only in the Capri desktop window. This view can still change the messaging switches, read the outbox and review exact messages, but it never handles provider credentials, recipients or verification codes.';
+export const contactChannels=['gmail','sms','voice','whatsapp','android'] as const;
+export type ContactChannel=typeof contactChannels[number];
+const adminChannel=z.enum(contactChannels),adminRevision=z.number().int().positive().safe();
+const validTimeZone=(value:string)=>{try{new Intl.DateTimeFormat('en',{timeZone:value});return true;}catch{return false;}};
+/** Mirrors the server's enforced per-channel limits exactly; tests compare it with the real schema. */
+export const ContactLimitsViewSchema=z.object({enabled:z.boolean(),unitCostMicros:z.number().int().nonnegative().max(1e9).default(0),maxDispatchCostMicros:z.number().int().nonnegative().max(1e9),
+  dailyBudgetMicros:z.number().int().nonnegative().max(1e12),maxPerMinute:z.number().int().min(1).max(60),maxPerDay:z.number().int().min(1).max(1000),
+  quietHours:z.object({startMinute:z.number().int().min(0).max(1439),endMinute:z.number().int().min(0).max(1439),timeZone:z.string().min(1).max(100).refine(validTimeZone)}).strict().optional()}).strict();
+export type ContactLimits=z.output<typeof ContactLimitsViewSchema>;
+/**
+ * Strict browser-safe projection of the administration status. It carries only bounded IDs, revisions, flags and
+ * limits; a reply with any other field (sender, client ID, account SID, token, destination, template body) is refused.
+ */
+export const ContactAdminStatusViewSchema=z.object({revision:adminRevision,state:z.enum(['ready','review-required','retention-required']),
+  channels:z.array(z.object({channel:adminChannel,configured:z.boolean(),enabled:z.boolean(),ready:z.boolean(),secretStored:z.boolean(),limits:ContactLimitsViewSchema}).strict()).max(5),
+  routes:z.array(z.object({id,revision:adminRevision,channel:adminChannel,kind:z.enum(['self','contact']),enabled:z.boolean(),optedIn:z.boolean(),verified:z.boolean(),verificationExpiresAt:TimestampSchema.optional()}).strict()).max(100),
+  templates:z.array(z.object({id,revision:adminRevision,enabled:z.boolean()}).strict()).max(100),
+  workflows:z.array(z.object({id,revision:adminRevision,enabled:z.boolean(),trigger:z.enum(['on-demand','task-completed'])}).strict()).max(100),
+  rules:z.array(z.object({id,revoked:z.boolean(),expiresAt:TimestampSchema}).strict()).max(100),
+  oauthPending:z.boolean(),billing:z.literal('local-conservative-estimate')}).strict();
+export type ContactAdminStatus=z.infer<typeof ContactAdminStatusViewSchema>;
+const ChallengeViewSchema=z.object({challengeId:id,requestId:id,expiresAt:TimestampSchema}).strict();
+export type ContactChallenge=z.infer<typeof ChallengeViewSchema>;
+const remoteSources=['service-receipt','observed-record'];
+const VerificationReceiptViewSchema=z.object({kind:z.literal('verification'),requestId:id,challengeId:id,receiptId:id,adapter:id,state:DeliveryReceiptSchema.shape.state,observedAt:TimestampSchema,
+  evidence:DeliveryReceiptSchema.shape.evidence}).strict().refine(r=>!['accepted','sent','delivered'].includes(r.state)||remoteSources.includes(r.evidence.source));
+export const ContactAdminReplyViewSchema=z.object({requestId:id.optional(),receipt:ActionReceiptSchema.optional(),status:ContactAdminStatusViewSchema.optional(),intent:ContactIntentSchema.optional(),
+  challenge:ChallengeViewSchema.optional(),result:z.union([ActionReceiptSchema,DeliveryReceiptSchema,VerificationReceiptViewSchema]).optional()}).strict()
+  .refine(v=>!!v.receipt||!!v.requestId&&!!v.status);
+const emptyInput=z.object({}).strict(),hx=z.string().regex(/^HX[0-9a-fA-F]{32}$/);
+/** Local mirror of the strict administration inputs (keys excluded). The desktop owner validates everything again. */
+export const contactAdminInputSchemas={
+  'recover-setup':z.object({confirmation:z.literal('disable-unprovable-permissions')}).strict(),
+  'configure-gmail':z.object({clientId:z.string().min(1).max(512).regex(/^[A-Za-z0-9._-]+$/),sender:z.string().min(1).max(254)}).strict(),
+  'connect-gmail':emptyInput,'cancel-gmail':emptyInput,'disconnect-gmail':emptyInput,
+  'configure-twilio':z.object({accountSid:z.string().regex(/^AC[0-9a-fA-F]{32}$/),authToken:z.string().min(1).max(512).regex(/^[A-Za-z0-9_-]+$/),sender:z.string().min(1).max(254),voiceEnabled:z.boolean()}).strict(),
+  'disable-twilio':emptyInput,
+  'save-route':z.object({routeId:id.optional(),channel:adminChannel,destination:z.string().min(1).max(254),kind:z.enum(['self','contact']),optedIn:z.boolean()}).strict(),
+  'disable-route':z.object({routeId:id}).strict(),
+  'verify-begin':z.object({routeId:id}).strict(),
+  'verify-complete':z.object({routeId:id,challengeId:id,code:z.string().regex(/^\d{6}$/)}).strict(),
+  'set-limits':z.object({channel:adminChannel,limits:ContactLimitsViewSchema}).strict(),
+  'save-template':z.object({templateId:id.optional(),definition:z.object({enabled:z.boolean(),body:z.string().min(1).max(1600),subject:z.string().max(200).refine(v=>!/[\r\n]/.test(v)).optional(),
+    contentClass:z.enum(['public','personal','private']),maxVoiceSeconds:z.number().int().min(1).max(120).optional(),whatsappSid:hx.optional()}).strict()}).strict(),
+  'save-workflow':z.object({workflowId:id.optional(),definition:z.object({enabled:z.boolean(),trigger:z.enum(['on-demand','task-completed']),routeId:id,templateId:id}).strict()}).strict(),
+  'recheck-whatsapp':z.object({contentSid:hx,language:z.string().min(2).max(10)}).strict(),
+  'add-rule':z.object({outboxRequestId:id,review:ContactReviewApprovalInputSchema,expiresAt:TimestampSchema}).strict(),
+  'revoke-rule':z.object({ruleId:id}).strict(),
+  'prepare-rule':z.object({workflowId:id,completion:z.enum(['verified','unverified'])}).strict(),
+  // Settings-started requests are never task scoped: no task ID is accepted from this view.
+  'prepare-notification':z.object({workflowId:id}).strict(),
+  'reconcile':z.object({outboxRequestId:id}).strict(),
+} as const;
+export type ContactAdminAction=keyof typeof contactAdminInputSchemas;
+export type ContactAdminFields<A extends ContactAdminAction>=z.input<typeof contactAdminInputSchemas[A]>;
+/** Allowed by the owner during a private session; every other administration change waits for it to end. */
+export const privateContactAdminActions:readonly ContactAdminAction[]=['cancel-gmail','prepare-notification'];
+/** Maximum exact-rule lifetime accepted by the owner. */
+export const contactRuleMaxDays=30;
+
+export type ContactAdminNoteState='pending'|'completed'|'rejected'|'conflict'|'unconfirmed'|'invalid';
+/** Validated, correlated nested evidence. Only fixed codes and identities: never provider or service text. */
+export interface ContactEvidence {kind:'delivery'|'verification';requestId:string;state:DeliveryReceipt['state'];adapter:string;remote:boolean;challengeId?:string}
+export interface ContactAdminNote {action:ContactAdminAction|'status';requestId:string;state:ContactAdminNoteState;message:string;evidence?:ContactEvidence;
+  /** The original outbox request this note concerns, for read-only reconciliation. */
+  outboxRequestId?:string}
+/**
+ * `challenge` is set only for a provider-accepted challenge (the only kind a code can complete). `uncertainChallenge`
+ * keeps the identities of a matching challenge whose dispatch is pending or unknown, for read-only reconciliation.
+ */
+export interface ContactAdminInterpretation {note:ContactAdminNote;status?:ContactAdminStatus;challenge?:ContactChallenge;uncertainChallenge?:ContactChallenge;intent?:ContactIntent}
+const adminDone:Partial<Record<ContactAdminAction,string>>={
+  'recover-setup':'Setup unlocked. Every earlier permission stays disabled: connect providers, set limits and verify recipients again. Nothing is configured or verified yet.',
+  'configure-gmail':'Gmail client saved. Not connected yet: use Connect Gmail and finish Google sign-in in your browser.',
+  'connect-gmail':'Google sign-in opened in your system browser. Gmail counts as connected only when setup status shows it.',
+  'cancel-gmail':'Pending Google sign-in cancelled. Nothing was connected.',
+  'disconnect-gmail':'Gmail disconnected and its stored authorization removed. Gmail recipients need verification again.',
+  'configure-twilio':'Twilio credentials saved and read back from protected storage. This is not a provider test: each channel still needs limits and verified recipients.',
+  'disable-twilio':'Twilio disabled and its stored token removed. SMS, voice and WhatsApp recipients need verification again.',
+  'save-route':'Recipient saved but not verified. Any earlier verification and rules for an edited recipient no longer apply. Nothing was sent.',
+  'disable-route':'Recipient disabled. Its rules were revoked.',
+  'verify-complete':'Recipient verified: the service matched the code from its own challenge.',
+  'set-limits':'Limits saved. Costs are local conservative estimates, not provider invoices.',
+  'save-template':'Template saved as a new revision. Rules bound to it were revoked. Nothing was sent.',
+  'save-workflow':'Workflow saved as a new revision. Rules bound to it were revoked. Nothing was sent.',
+  'recheck-whatsapp':'Approved plain-text template read back and pinned for 24 hours. Nothing was sent, created or submitted.',
+  'add-rule':'Exact rule saved for this recipient, workflow and template revision until it expires or you revoke it. Nothing was sent.',
+  'revoke-rule':'Rule revoked.',
+};
+const voiceAdapter=(adapter:string)=>adapter==='twilio-voice';
+/** Fixed text for correlated nested evidence. Accepted, sent, delivered and call connection stay distinct. */
+export function contactEvidenceText(e:ContactEvidence):string {
+  const voice=voiceAdapter(e.adapter),what=e.kind==='verification'?'verification challenge':voice?'call request':'message';
+  switch(e.state){
+    case 'accepted':return e.remote?'The provider accepted the '+what+' (provider receipt). '+(voice?'The call has not connected yet.':'Delivery is not observed yet.'):contactEvidenceText({...e,state:'unconfirmed'});
+    case 'sent':return e.remote?(voice?'The provider reports the call in progress. That does not prove a person heard it.':'The provider reports the '+what+' sent. Delivery is not observed yet.'):contactEvidenceText({...e,state:'unconfirmed'});
+    case 'delivered':return e.remote?(voice?'The provider reports the call connected and ended. It may have reached voicemail; this is not proof a person listened.':'The provider reports the '+what+' delivered.'):contactEvidenceText({...e,state:'unconfirmed'});
+    case 'pending':return e.kind==='verification'?'The challenge is queued and not yet accepted by the provider. It is not resent; use Check provider record.':'Waiting for your exact approval in the outbox. Nothing was sent.';
+    case 'rejected':return 'The '+what+' was rejected before dispatch or by the provider. The draft is kept; nothing is resent.';
+    default:return 'The outcome of this '+what+' is unknown: it may or may not have been sent. Nothing is resent automatically; use Check provider record.';
+  }
+}
+const evidenceOf=(r:DeliveryReceipt|z.infer<typeof VerificationReceiptViewSchema>,kind:ContactEvidence['kind']):ContactEvidence=>({kind,requestId:r.requestId,state:r.state,adapter:r.adapter,remote:remoteSources.includes(r.evidence.source),
+  ...('challengeId' in r?{challengeId:r.challengeId}:{})});
+const delivered=(e:ContactEvidence)=>e.remote&&['accepted','sent','delivered'].includes(e.state);
+const unknownTail=(action:ContactAdminAction,which:string)=>' The outcome is unknown and nothing is retried. Read setup status'+
+  (action==='verify-begin'?'. A code may have been sent; a new one is offered only after the earlier one would have expired.'
+    :action==='prepare-rule'?'. A rule message may have been prepared; this workflow’s pending messages are not offered as send approvals until its purpose is known.'
+    :['prepare-notification','reconcile'].includes(action)?' and use Check provider record'+which+'.':' before changing it again.');
+/**
+ * Interprets one administration reply for exactly this request. Success needs the matching receipt; sends, challenges
+ * and reconciliation also need nested evidence correlated with the original request: the same request IDs, the
+ * complete recipient/workflow/template/body binding and the requested workflow. No service text is kept.
+ */
+export function interpretContactAdminReply(request:{requestId:string;action:ContactAdminAction|'status';outboxRequestId?:string;workflowId?:string},body:unknown):ContactAdminInterpretation {
+  const base={action:request.action,requestId:request.requestId};
+  const unknown=(why:string,extra:Partial<ContactAdminNote>={}):ContactAdminNote=>({...base,state:'unconfirmed',message:why+(request.action==='status'?' Setup status is unknown.':unknownTail(request.action,' for the original request')),...extra});
+  const parsed=ContactAdminReplyViewSchema.safeParse(body);
+  if(!parsed.success)return {note:unknown('The reply was not recognized.')};
+  const reply=parsed.data;
+  if(request.action==='status'){
+    if(reply.receipt||reply.requestId!==request.requestId||!reply.status)return {note:unknown('The reply did not match this request.')};
+    return {note:{...base,state:'completed',message:'Setup status read.'},status:reply.status};
+  }
+  const r=reply.receipt;
+  if(!r||r.requestId!==request.requestId||r.feature!=='contacts'||r.action!==request.action)return {note:unknown('The reply did not match this request.')};
+  const status=reply.status;
+  if(r.outcome==='rejected')return {status,note:r.error?.code==='conflict'
+    ?{...base,state:'conflict',message:'Setup changed since this view read it, or this request was already used for something else. Nothing was changed. Review the refreshed setup before trying again.'}
+    :{...base,state:'rejected',message:(errorHints[r.error?.code??'']??'Rejected.')+' Nothing was changed.'}};
+  if(r.outcome==='cancelled')return {status,note:{...base,state:'rejected',message:'Cancelled before any effect. Nothing was changed.'}};
+  if(r.outcome!=='completed')return {status,note:unknown('The desktop owner could not confirm it.')};
+  switch(request.action){
+    case 'verify-begin':{
+      const c=reply.challenge,v=reply.result;
+      if(!c||!v||!('kind' in v)||v.challengeId!==c.challengeId||v.requestId!==c.requestId)return {status,note:unknown('The challenge receipt did not match this request.')};
+      const evidence=evidenceOf(v,'verification'),note:ContactAdminNote={...base,evidence,outboxRequestId:c.requestId,
+        state:delivered(evidence)?'completed':evidence.state==='rejected'?'rejected':evidence.state==='pending'?'pending':'unconfirmed',
+        message:contactEvidenceText(evidence)+(delivered(evidence)?' Enter the 6-digit code you received.':'')};
+      return {status,note,challenge:delivered(evidence)?c:undefined,uncertainChallenge:!delivered(evidence)&&evidence.state!=='rejected'?c:undefined};
+    }
+    case 'prepare-notification':{
+      const intent=reply.intent,a=reply.result;
+      if(!intent||!a||!('feature' in a)||a.requestId!==intent.requestId||a.feature!=='contacts'||a.action!=='send'||intent.binding.workflowId!==request.workflowId||
+        a.delivery&&(a.delivery.requestId!==intent.requestId||!sameBinding(a.delivery.binding,intent.binding)))
+        return {status,intent,note:unknown('The send receipt did not match the prepared message.',intent?{outboxRequestId:intent.requestId}:{})};
+      const evidence:ContactEvidence=a.delivery?evidenceOf(a.delivery,'delivery'):{kind:'delivery',requestId:intent.requestId,adapter:'contacts',remote:false,
+        state:a.outcome==='pending'?'pending':a.outcome==='rejected'||a.outcome==='cancelled'?'rejected':'unconfirmed'};
+      const state:ContactAdminNoteState=a.outcome==='completed'&&delivered(evidence)?'completed':evidence.state==='pending'?'pending':evidence.state==='rejected'?'rejected':'unconfirmed';
+      return {status,intent,note:{...base,state,evidence,outboxRequestId:intent.requestId,message:contactEvidenceText(state==='unconfirmed'?{...evidence,state:'unconfirmed'}:evidence)}};
+    }
+    case 'prepare-rule':{
+      const intent=reply.intent,d=reply.result;
+      if(!intent||!d||!('binding' in d)||d.requestId!==intent.requestId||!sameBinding(d.binding,intent.binding)||intent.binding.workflowId!==request.workflowId)
+        return {status,intent,note:unknown('The prepared message did not match this request.')};
+      if(d.state!=='pending')return {status,intent,note:{...base,state:d.state==='rejected'?'rejected':'unconfirmed',outboxRequestId:intent.requestId,message:'The rule message could not be prepared for review. Nothing was sent.'}};
+      return {status,intent,note:{...base,state:'completed',outboxRequestId:intent.requestId,message:'Exact rule message prepared. Nothing was sent. Load messaging details, show this exact message, then add the rule from the outbox.'}};
+    }
+    case 'reconcile':{
+      const d=reply.result;
+      if(!d||'feature' in d||d.requestId!==request.outboxRequestId)return {status,note:{...base,state:'unconfirmed',outboxRequestId:request.outboxRequestId,message:'No matching provider record could be read. Nothing was resent; the original request is unchanged.'}};
+      const evidence=evidenceOf(d,'kind' in d?'verification':'delivery');
+      return {status,note:{...base,state:'completed',evidence,outboxRequestId:request.outboxRequestId,message:'Read-only check: '+contactEvidenceText(evidence)}};
+    }
+    default:return {status,note:{...base,state:'completed',message:adminDone[request.action]??'Confirmed by the desktop owner.'}};
+  }
+}
+
+export interface ContactAdminSnapshot {
+  status:ReadView<ContactAdminStatus>;
+  /** One administration request is outstanding at the bridge (possibly from an earlier mount); new ones wait. */
+  busy:boolean;
+  notes:Readonly<Record<string,ContactAdminNote>>;
+  /** Challenges issued in this owner scope, by route ID. Only an accepted, current one takes a code (contactChallengeView). */
+  challenges:Readonly<Record<string,ContactChallengeRecord>>;
+  /** Verification requests whose reply carried no challenge identity, by route ID. */
+  uncertain:Readonly<Record<string,ContactUncertainVerification>>;
+  /** Exact-rule drafts prepared in this owner scope, by original outbox request ID. Survives Settings navigation. */
+  prepared:Readonly<Record<string,string>>;
+  /**
+   * Exact-rule preparations without a matching settled receipt, by administration request ID → workflow ID. Recorded
+   * before dispatch; while one is open, a pending approval for that workflow cannot be proved to be a send draft.
+   */
+  ruleFences:Readonly<Record<string,string>>;
+  /** Sends in flight or whose outcome is pending or unknown, by workflow ID. No new send is offered until you release it. */
+  held:Readonly<Record<string,ContactAdminNote>>;
+  /** Route of workflows saved in this owner scope (status itself never names routes or templates). */
+  workflowRoutes:Readonly<Record<string,string>>;
+}
+/** A challenge this owner scope issued for one route revision. Only an accepted, unexpired, unexhausted one takes a code. */
+export interface ContactChallengeRecord extends ContactChallenge {routeRevision:number;accepted:boolean;attempts:number}
+/** A verification request without a returned challenge identity: a code may have been sent until `until`. */
+export interface ContactUncertainVerification {requestId:string;routeRevision:number;until:number}
+/** The owner's challenge lifetime and code attempts. A new challenge also retires every older one for the route. */
+export const contactChallengeLifetimeMs=300000,contactChallengeAttempts=5;
+/**
+ * What a route's verification can do now: take a code, check an uncertain challenge read-only, wait for an unknown one
+ * to lapse, or start a new (paid, explicitly confirmed) challenge because the old one expired, changed or was used up.
+ */
+export type ContactChallengeView={kind:'none'}|{kind:'code'|'check';challenge:ContactChallengeRecord}|{kind:'wait';until:number}|{kind:'renew';reason:'expired'|'changed'|'exhausted'};
+export function contactChallengeView(route:{revision:number;enabled:boolean;verified:boolean},record:ContactChallengeRecord|undefined,uncertain:ContactUncertainVerification|undefined,now:number):ContactChallengeView {
+  if(!route.enabled||route.verified)return {kind:'none'};
+  if(record){
+    if(record.routeRevision!==route.revision)return {kind:'renew',reason:'changed'};
+    if(record.expiresAt<=now)return {kind:'renew',reason:'expired'};
+    if(!record.accepted)return {kind:'check',challenge:record};
+    return record.attempts>=contactChallengeAttempts?{kind:'renew',reason:'exhausted'}:{kind:'code',challenge:record};
+  }
+  if(uncertain&&uncertain.routeRevision===route.revision&&uncertain.until>now)return {kind:'wait',until:uncertain.until};
+  return {kind:'none'};
+}
+/**
+ * Owner-scoped memory shared by every controller on one runner gate (the main window's runner), so leaving and
+ * reopening Settings keeps in-flight/unknown sends, challenges and exact-rule draft purposes. It never holds status,
+ * exact previews, codes or secrets, and a privacy/Stop boundary replaces it.
+ */
+interface ContactAdminMemory {key:string;challenges:Record<string,ContactChallengeRecord>;uncertain:Record<string,ContactUncertainVerification>;prepared:Record<string,string>;ruleFences:Record<string,string>;held:Record<string,ContactAdminNote>;workflowRoutes:Record<string,string>}
+const adminMemories=new WeakMap<ReadGate,ContactAdminMemory>(),adminListeners=new WeakMap<ReadGate,Set<()=>void>>();
+const freshMemory=(key:string):ContactAdminMemory=>({key,challenges:{},uncertain:{},prepared:{},ruleFences:{},held:{},workflowRoutes:{}});
+/** Whether a pending outbox approval may be an exact-rule draft whose purpose was never confirmed (no send approval then). */
+export const contactRuleFenced=(snap:Pick<ContactAdminSnapshot,'ruleFences'|'prepared'>,receipt:Pick<DeliveryReceipt,'requestId'|'binding'>)=>
+  snap.prepared[receipt.requestId]===undefined&&Object.values(snap.ruleFences).includes(receipt.binding.workflowId);
+const without=<T,>(record:Record<string,T>,id:string)=>{const {[id]:_gone,...rest}=record;return rest;};
+export interface ContactAdminController {
+  /** Called on every render. A privacy/Stop boundary drops status, notes, challenges and drafts synchronously. */
+  sync(scope:PrivacyScope):boolean;
+  snapshot():ContactAdminSnapshot;
+  /** Why this action cannot start now, or undefined. */
+  blocked(action:ContactAdminAction|'status'):string|undefined;
+  refresh():Promise<void>;
+  run<A extends ContactAdminAction>(action:A,fields:ContactAdminFields<A>,slot?:string):Promise<ContactAdminNote|undefined>;
+  /** Explicit user acknowledgement after checking the outbox: allows a new, separate request for this workflow. */
+  release(workflowId:string):void;
+  close():void;
+  closed():boolean;
+  subscribe(listener:()=>void):()=>void;
+}
+export const contactAdminKey='admin contacts';
+export function createContactAdminController(options:{bridge?:ContactAdminBridge;gate:ReadGate;scope:PrivacyScope;clock?:()=>number;timeoutMs?:number;setTimer?:SetTimer;newRequestId?:()=>string}):ContactAdminController {
+  const gate=options.gate;
+  // Listeners live with the gate's memory so a receipt that settles after a remount still re-renders the newer view.
+  let listeners=adminListeners.get(gate);if(!listeners){listeners=new Set();adminListeners.set(gate,listeners);}
+  const notify=()=>{for(const l of[...listeners!])l();};
+  const clock=options.clock??Date.now,setTimer=options.setTimer??defaultTimer,timeoutMs=options.timeoutMs??runnerLimits.timeoutMs,newId=options.newRequestId??(()=>crypto.randomUUID());
+  let scope=options.scope,key=scopeKey(scope),generation=0,closed=false;
+  let status:ReadView<ContactAdminStatus>={kind:'unchecked'},notes:Record<string,ContactAdminNote>={};
+  let mem=adminMemories.get(gate);if(!mem||mem.key!==key){mem=freshMemory(key);adminMemories.set(gate,mem);}
+  const memoryLive=(m:ContactAdminMemory)=>adminMemories.get(gate)===m;
+  // A privacy/Stop boundary forgets everything, including the owner-scoped memory; closing (navigation) does not.
+  const drop=()=>{generation++;status={kind:'unchecked'};notes={};mem=freshMemory(key);adminMemories.set(gate,mem);};
+  const current=()=>status.kind==='ready'?status.data:undefined;
+  const blocked=(action:ContactAdminAction|'status'):string|undefined=>{
+    if(closed)return 'This view was closed.';
+    if(!options.bridge)return contactSetupUnavailableMessage;
+    if(!privateFlowsAllowed(scope))return missingEpochMessage;
+    if(action==='status')return undefined;
+    if(scope.privateSession&&!privateContactAdminActions.includes(action))return 'Private session: contact setup changes wait until it ends.';
+    const s=current();if(!s)return 'Read setup status first. Nothing was sent.';
+    if(s.state==='retention-required')return 'Contact setup is locked while update rollback retention is incomplete. There is no bypass.';
+    if(s.state==='review-required'&&action!=='recover-setup')return 'Contact permissions need review. Start fresh contact setup first.';
+    return undefined;
+  };
+  // One request at the bridge at a time, across remounts; a deadline frees the view but never permits a pile-up.
+  // Liveness is checked again immediately before the bridge call: a view retired by Stop, a privacy change or closing
+  // in the meantime dispatches nothing. The bridge rechecks the same fence after its own privacy synchronization.
+  type Sent={ok:true;body:unknown}|{ok:false;notSent?:true}|'timeout'|'busy';
+  // `late` receives a reply that arrives after the deadline (used only to settle an exact-rule purpose fence).
+  const send=(request:ContactAdminRequest,fence:ContactAdminFence,late?:(reply:Exclude<Sent,'timeout'|'busy'>)=>void):Promise<Sent>=>{
+    const release=gate.start(contactAdminKey);if(!release)return Promise.resolve('busy');
+    return new Promise(resolve=>{let settled=false;
+      const cancel=setTimer(()=>{if(!settled){settled=true;resolve('timeout');}},timeoutMs);
+      Promise.resolve().then(()=>{if(!fence.live())throw new ContactAdminNotDispatched();return options.bridge!(request,fence);})
+        .then(body=>({ok:true as const,body}),error=>error instanceof ContactAdminNotDispatched?{ok:false as const,notSent:true as const}:{ok:false as const})
+        .then(reply=>{release();if(!settled){settled=true;cancel();resolve(reply);}else{late?.(reply);notify();}});});
+  };
+  /**
+   * Settles one exact-rule fence from a correlated reply. A matching intent records the draft's rule purpose; a refusal
+   * before any effect (or a request that never left) releases the fence; anything else keeps it, so an uncertain
+   * pending draft is never offered as a send approval.
+   */
+  const settleRule=(m:ContactAdminMemory,fenceId:string,workflowId:string,read:ContactAdminInterpretation|'not-sent')=>{
+    if(!memoryLive(m)||m.ruleFences[fenceId]===undefined)return;
+    if(read==='not-sent'){m.ruleFences=without(m.ruleFences,fenceId);return;}
+    if(read.intent&&read.note.outboxRequestId===read.intent.requestId&&read.intent.binding.workflowId===workflowId){
+      m.prepared={...m.prepared,[read.intent.requestId]:workflowId};m.ruleFences=without(m.ruleFences,fenceId);}
+    else if(!read.intent&&!read.note.outboxRequestId&&(read.note.state==='rejected'||read.note.state==='conflict'))m.ruleFences=without(m.ruleFences,fenceId);
+  };
+  const accept=(next:ContactAdminStatus|undefined)=>{if(next)status={kind:'ready',data:next,observedAt:clock()};};
+  const remember=(m:ContactAdminMemory,action:ContactAdminAction,target:{routeId?:string;workflowId?:string;outboxRequestId?:string;challengeId?:string},
+    route:ContactAdminStatus['routes'][number]|undefined,before:ContactAdminStatus,read:ContactAdminInterpretation)=>{
+    const state=read.note.state;
+    if(action==='verify-begin'&&route){
+      const issued=read.challenge??read.uncertainChallenge;
+      if(issued){m.uncertain=without(m.uncertain,route.id);m.challenges={...m.challenges,[route.id]:{...issued,routeRevision:route.revision,accepted:!!read.challenge,attempts:0}};}
+      // A rejected challenge or a refused request leaves nothing outstanding; an unknown one keeps the marker until it lapses.
+      else if(state==='rejected'||state==='conflict')m.uncertain=without(m.uncertain,route.id);
+      // Any new challenge retires older ones at the owner, so an earlier code is no longer offered unless nothing happened.
+      if(state!=='conflict'&&!issued)m.challenges=without(m.challenges,route.id);
+    }
+    if(action==='verify-complete'&&target.routeId){const c=m.challenges[target.routeId];
+      if(c?.challengeId===target.challengeId){
+        if(state==='completed')m.challenges=without(m.challenges,target.routeId);
+        else if(state!=='conflict')m.challenges={...m.challenges,[target.routeId]:{...c,attempts:c.attempts+1}};
+      }}
+    if(action==='reconcile'&&read.note.evidence?.kind==='verification'){const e=read.note.evidence;
+      for(const [routeId,c] of Object.entries(m.challenges))if(c.requestId===target.outboxRequestId&&c.challengeId===e.challengeId){
+        if(delivered(e))m.challenges={...m.challenges,[routeId]:{...c,accepted:true}};
+        else if(e.state==='rejected')m.challenges=without(m.challenges,routeId);
+      }}
+    if(action==='prepare-notification'&&target.workflowId)m.held=state==='completed'||state==='rejected'||state==='conflict'?without(m.held,target.workflowId):{...m.held,[target.workflowId]:read.note};
+    if(action==='save-workflow'&&state==='completed'&&read.status){
+      const known=new Set(before.workflows.map(w=>w.id)),saved=target.workflowId??read.status.workflows.find(w=>!known.has(w.id))?.id;
+      if(saved)m.workflowRoutes={...m.workflowRoutes,[saved]:(target as unknown as ContactAdminFields<'save-workflow'>).definition.routeId};
+    }
+    // Starting fresh disables every route and discards the owner's prepared drafts; unknown sends stay held.
+    if(action==='recover-setup'&&state==='completed'){m.challenges={};m.uncertain={};m.prepared={};}
+  };
+  const controller:ContactAdminController={
+    sync(next){if(closed||scopeKey(next)===key)return false;scope=next;key=scopeKey(next);drop();return true;},
+    snapshot:()=>({status,busy:gate.busy(contactAdminKey),notes,challenges:mem!.challenges,uncertain:mem!.uncertain,prepared:mem!.prepared,ruleFences:mem!.ruleFences,held:mem!.held,workflowRoutes:mem!.workflowRoutes}),
+    blocked,
+    async refresh(){
+      if(blocked('status')||gate.busy(contactAdminKey))return;
+      const mine=generation,requestId=newId();status=status.kind==='ready'?status:{kind:'loading'};notify();
+      const reply=await send({requestId,expectedRevision:current()?.revision??1,action:'status'},{epoch:scope.epoch,live:()=>!closed&&mine===generation});
+      if(mine!==generation||closed)return;
+      if(reply==='busy')return;
+      const read=reply==='timeout'||!reply.ok?undefined:interpretContactAdminReply({requestId,action:'status'},reply.body);
+      if(read?.status)accept(read.status);
+      else if(reply!=='timeout'&&!reply.ok&&reply.notSent)status={kind:'error',message:'Setup status was not read: this view changed before the request left it. Read it again.'};
+      else status={kind:'error',message:reply==='timeout'?'Setup status did not arrive in time. Status is unknown.':'Setup status could not be read: the desktop contact owner is unavailable in this build or session. Nothing is shown as configured.'};
+      notify();
+    },
+    async run(action,fields,slot=action){
+      const why=blocked(action);
+      if(why){if(!closed){notes={...notes,[slot]:{action,requestId:'',state:'invalid',message:why}};notify();}return undefined;}
+      const parsed=contactAdminInputSchemas[action].safeParse(fields);
+      if(!parsed.success){const which=[...new Set(parsed.error.issues.map(i=>i.path.join('.')||'input'))].slice(0,4).join(', ');
+        notes={...notes,[slot]:{action,requestId:'',state:'invalid',message:'Check '+displayText(which,80)+'. Nothing was sent.'}};notify();return undefined;}
+      if(gate.busy(contactAdminKey))return undefined;
+      const mine=generation,memory=mem!,requestId=newId(),before=current()!;
+      const request={...parsed.data,requestId,expectedRevision:before.revision,action} as ContactAdminRequest;
+      const target=parsed.data as {routeId?:string;workflowId?:string;outboxRequestId?:string;challengeId?:string};
+      const outboxRequestId=action==='reconcile'?target.outboxRequestId:undefined,route=target.routeId?before.routes.find(r=>r.id===target.routeId):undefined;
+      // Markers before dispatch: an in-flight send or challenge blocks a duplicate, across remounts, until its receipt.
+      if(action==='prepare-notification')memory.held={...memory.held,[target.workflowId!]:{action,requestId,state:'pending',message:'This send is waiting for its receipt. No new send is offered and nothing is resent automatically.'}};
+      if(action==='verify-begin'&&route)memory.uncertain={...memory.uncertain,[route.id]:{requestId,routeRevision:route.revision,until:clock()+contactChallengeLifetimeMs}};
+      // An exact-rule draft's purpose is fenced before dispatch, so a lost or late receipt cannot turn it into a send approval.
+      const rule=action==='prepare-rule'?target.workflowId!:undefined;
+      if(rule)memory.ruleFences={...memory.ruleFences,[requestId]:rule};
+      const unmark=()=>{if(action==='prepare-notification'&&memory.held[target.workflowId!]?.requestId===requestId)memory.held=without(memory.held,target.workflowId!);
+        if(action==='verify-begin'&&route&&memory.uncertain[route.id]?.requestId===requestId)memory.uncertain=without(memory.uncertain,route.id);
+        if(rule)settleRule(memory,requestId,rule,'not-sent');};
+      notes={...notes,[slot]:{action,requestId,state:'pending',message:'Waiting for the desktop owner’s receipt…'}};notify();
+      const reply=await send(request,{epoch:scope.epoch,live:()=>!closed&&mine===generation&&memoryLive(memory)},rule?late=>{
+        if(!late.ok&&late.notSent)settleRule(memory,requestId,rule,'not-sent');
+        else settleRule(memory,requestId,rule,late.ok?interpretContactAdminReply({requestId,action,workflowId:rule},late.body):{note:{action,requestId,state:'unconfirmed',message:''}});}:undefined);
+      const viewLive=()=>mine===generation&&!closed;
+      if(reply==='busy'||reply!=='timeout'&&!reply.ok&&reply.notSent){
+        unmark();
+        if(viewLive()){notes=reply==='busy'?without(notes,slot):{...notes,[slot]:{action,requestId,state:'rejected',message:'Not sent: this view changed before the request left it. Nothing was changed.'}};}
+        notify();return reply==='busy'||!viewLive()?undefined:notes[slot];
+      }
+      const read:ContactAdminInterpretation=reply==='timeout'||!reply.ok
+        ?{note:{action,requestId,state:'unconfirmed',outboxRequestId,message:(reply==='timeout'?'No receipt within '+Math.round(timeoutMs/1000)+' s.':'No receipt from the desktop owner.')+unknownTail(action,'')}}
+        :interpretContactAdminReply({requestId,action,outboxRequestId,workflowId:target.workflowId},reply.body);
+      // The owner-scoped memory takes this receipt even after Settings closed, so a remount keeps the send held, the
+      // challenge and the draft purpose. A privacy/Stop boundary replaced the memory: a late receipt then changes nothing.
+      if(memoryLive(memory))remember(memory,action,target,route,before,read);
+      if(rule&&reply!=='timeout')settleRule(memory,requestId,rule,read);
+      if(!viewLive()){notify();return undefined;}
+      accept(read.status);notes={...notes,[slot]:read.note};
+      notify();return read.note;
+    },
+    release(workflowId){if(closed||!mem!.held[workflowId]||gate.busy(contactAdminKey))return;mem!.held=without(mem!.held,workflowId);notify();},
+    close(){if(closed)return;closed=true;generation++;status={kind:'unchecked'};notes={};notify();},
+    closed:()=>closed,
+    subscribe(listener){listeners!.add(listener);return ()=>{listeners!.delete(listener);};},
+  };
+  return controller;
+}
+/** Display amounts: integer micro-units of your billing currency, as local estimates. */
+export const formatMicros=(micros:number)=>{const text=(micros/1e6).toFixed(6).replace(/0+$/,'');return text.endsWith('.')?text+'00':text;};
+export const parseMicros=(text:string):number|undefined=>{const t=text.trim();if(!/^\d{1,7}(?:\.\d{1,6})?$/.test(t))return undefined;const v=Math.round(Number(t)*1e6);return Number.isSafeInteger(v)?v:undefined;};
+export const minuteText=(m:number)=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+export const parseMinute=(text:string):number|undefined=>{const m=/^(\d\d):(\d\d)$/.exec(text);if(!m)return undefined;const v=Number(m[1])*60+Number(m[2]);return Number(m[1])<24&&Number(m[2])<60?v:undefined;};
+/** The enforced limits in words. Never a monthly count: only the fields the owner enforces. */
+export function contactLimitsText(channel:ContactChannel,l:ContactLimits):string {
+  const unit=channel==='voice'?'started call minute':channel==='sms'?'SMS segment':'message';
+  return (l.enabled?'On':'Off')+' · up to '+l.maxPerMinute+'/min and '+l.maxPerDay+' per rolling day · estimate '+formatMicros(l.unitCostMicros)+' per '+unit+
+    ', at most '+formatMicros(l.maxDispatchCostMicros)+' per send, '+formatMicros(l.dailyBudgetMicros)+' per rolling day'+
+    (l.quietHours?' · quiet '+minuteText(l.quietHours.startMinute)+'–'+minuteText(l.quietHours.endMinute)+' '+displayText(l.quietHours.timeZone,60):'');
+}
+const channelNames:Record<ContactChannel,string>={gmail:'Gmail',sms:'SMS',voice:'Voice calls',whatsapp:'WhatsApp',android:'Paired Android'};
+export const contactChannelName=(c:ContactChannel)=>channelNames[c];
+/** Separate truthful readiness per channel: configuration, limits and channel prerequisites, never delivery. */
+export function contactChannelBadge(c:ContactAdminStatus['channels'][number],state:ContactAdminStatus['state']):Badge {
+  if(state!=='ready')return {tag:'UNAVAILABLE',tone:'warn',text:'Locked until contact permissions are reviewed.'};
+  if(c.ready)return c.channel==='android'?{tag:'READY',tone:'green',text:'A paired device is recorded for an enabled route and limits are on. Only the phone’s own receipt confirms delivery.'}
+    :{tag:'READY',tone:'green',text:'Provider, limits and channel prerequisites are in place. Each recipient still needs verification; this is not a delivery test.'};
+  if(!c.configured)return {tag:'NOT CONFIGURED',tone:'warn',text:c.channel==='gmail'?'Gmail is not connected.':c.channel==='android'?'No enabled, opted-in paired-device recipient.':'Twilio credentials are not saved.'};
+  if(!c.enabled)return {tag:'LIMITS OFF',tone:'warn',text:'Set and enable limits for this channel. Nothing is sent while its limits are off.'};
+  const why:Record<ContactChannel,string>={gmail:'The limits do not allow a message.',sms:'Needs a nonzero estimated cost per segment within the per-send and daily budgets.',
+    voice:'Needs voice calls allowed in Twilio setup and a nonzero estimated cost per call minute within budget.',
+    whatsapp:'Needs a nonzero estimated cost within budget and an approved plain-text template rechecked in the last 24 hours.',
+    android:'No paired device is currently confirmed for an enabled recipient. A pair record alone does not make the phone reachable.'};
+  return {tag:'NOT READY',tone:'warn',text:why[c.channel]};
+}
+/** Quick local check before sending; the owner applies the authoritative canonical form. */
+export function contactDestinationProblem(channel:ContactChannel,value:string):string|undefined {
+  const v=value.trim();if(!v)return 'Enter the recipient.';
+  if(channel==='gmail')return /^[^\s@<>,;"]+@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?\.[A-Za-z]{2,63}$/.test(v)?undefined:'Use one plain email address.';
+  if(channel==='android')return IdSchema.safeParse(v).success?undefined:'Use the paired device ID.';
+  return /^\+[1-9][0-9]{7,14}$/.test(channel==='whatsapp'?v.replace(/^whatsapp:/,''):v)?undefined:'Use an international number such as +15551234567.';
+}
+/** Templates may use only the server-owned {{status}} value; nothing else is substituted. */
+export const templateBodyProblem=(body:string)=>!body.trim()?'Enter the message text.':/\{\{(?!status\}\})[^}]*\}\}/.test(body)||/\{\{status\}\}\}/.test(body)?'Only {{status}} can be filled in; it is supplied by Capri.':undefined;
 
 // ---- skills session --------------------------------------------------------------------------
 export const emptyTeachForm={name:'',description:'',summary:'',keywords:'',tools:'',optionalTools:'',steps:'',verify:'',checks:'',security:false};
@@ -666,6 +1119,12 @@ export function deliveryBadge(receipt:DeliveryReceipt,requestId=receipt.requestI
   const parsed=DeliveryReceiptSchema.safeParse(receipt);
   const remote=parsed.success&&(receipt.evidence.source==='service-receipt'||receipt.evidence.source==='observed-record');
   if(!parsed.success||receipt.requestId!==requestId)return {tag:'UNCONFIRMED',tone:'warn',text:'The receipt does not match this message. Draft kept; nothing is resent.'};
+  // A connected or completed call can be voicemail or an automated answer: never proof that a person listened.
+  if(receipt.adapter==='twilio-voice'&&remote)switch(receipt.state){
+    case 'accepted':return {tag:'CALL ACCEPTED',tone:'green',text:'The provider accepted the call request (provider receipt). The call has not connected yet.'};
+    case 'sent':return {tag:'CALL PLACED',tone:'green',text:'The provider reports the call in progress. That does not prove a person heard the script.'};
+    case 'delivered':return {tag:'CALL CONNECTED',tone:'green',text:'The provider reports the call connected and ended. It may have reached voicemail; this is not proof a person listened.'};
+  }
   switch(receipt.state){
     case 'accepted':if(remote)return {tag:'ACCEPTED',tone:'green',text:'The provider accepted the message (provider receipt). Delivery is not yet observed.'};break;
     case 'sent':if(remote)return {tag:'SENT',tone:'green',text:'The provider confirmed transmission. Delivery is not yet observed.'};break;
