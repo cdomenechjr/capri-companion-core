@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {GmailProvider,TwilioProvider,AndroidNotificationProvider,canonicalRecipient,reviewedContactBody,
+import {GmailProvider,TwilioProvider,AndroidNotificationProvider,canonicalRecipient,reviewedContactBody,approvedContactTextHash,renderApprovedContactText,
   type ContactFetch,type ContactSecretVault,type OutboundMessage} from '../src/extensions/contact-providers';
 
 class Vault implements ContactSecretVault {
@@ -79,6 +79,15 @@ test('OAuth state is single-use under concurrent callbacks and prepared sends st
   assert.deepEqual(await prepared.dispatch(),{state:'unconfirmed'});assert.equal(calls,1);assert.equal(await vault.read('gmail'),undefined);
 });
 
+test('corrupt protected Gmail tokens and PKCE records fail before any provider request',async()=>{
+  const vault=new Vault();let requests=0;const provider=new GmailProvider({clientId:'fixture',vaultKey:'gmail',sender:gmailMessage.sender},vault,async()=>{requests++;throw Error('Unexpected request');},()=>100000);
+  for(const raw of ['null','[]',JSON.stringify({accessToken:23,expiresAt:999999999}),JSON.stringify({refreshToken:'fixture',expiresAt:-1}),JSON.stringify({accessToken:'fixture',expiresAt:999999999,extra:'unsupported'})]){
+    await vault.write('gmail',raw);await assert.rejects(provider.prepare(gmailMessage,signal()));assert.equal(requests,0);
+  }
+  const start=await provider.beginConnection('http://127.0.0.1:18601/fixture'),key='gmail:pkce:'+createHash('sha256').update(start.state).digest('hex');
+  await vault.write(key,JSON.stringify({createdAt:100000,expiresAt:400000,redirectUri:'https://example.invalid'}));await assert.rejects(provider.finishConnection(start.state,'fixture',signal()));assert.equal(await vault.read(key),undefined);assert.equal(requests,0);
+});
+
 const account='AC'+'a'.repeat(32),messageSid='SM'+'b'.repeat(32),callSid='CA'+'c'.repeat(32),contentSid='HX'+'d'.repeat(32);
 const sms:OutboundMessage={channel:'sms',sender:'+15550000001',recipient:'+15550000002',body:'Checked content'};
 function record(m:OutboundMessage,status:string,sid=messageSid){return {sid,account_sid:account,to:m.recipient,from:m.sender,direction:'outbound-api',status};}
@@ -109,7 +118,8 @@ test('Twilio rejects response identity mismatches and arbitrary refusal errors w
 test('WhatsApp uses official approved Content template parameters, with no free-text Body or URL override',async()=>{
   const vault=new Vault();await vault.write('token','secret');let sent:RequestInit|undefined;
   const m:OutboundMessage={...sms,channel:'whatsapp',recipient:'whatsapp:'+sms.recipient,sender:'whatsapp:'+sms.sender,body:'Rendered reviewed template: 123456',whatsapp:{contentSid,variables:{'1':'123456'}}};
-  const provider=new TwilioProvider('whatsapp',{accountSid:account,authTokenKey:'token',sender:m.sender},vault,async(url,init)=>{assert.ok(url.startsWith('https://api.twilio.com/'));sent=init;return response(record(m,'sent'));});
+  const template={accountSid:account,sid:contentSid,language:'en',body:'Rendered reviewed template: {{1}}',variables:['1']};
+  const provider=new TwilioProvider('whatsapp',{accountSid:account,authTokenKey:'token',sender:m.sender,approvedText:[{...template,sha256:approvedContactTextHash(template),revision:1,providerGeneration:'fixture-generation',checkedAt:0}]},vault,async(url,init)=>{assert.ok(url.startsWith('https://api.twilio.com/'));sent=init;return response(record(m,'sent'));});
   assert.equal((await (await provider.prepare(m,signal())).dispatch()).state,'sent');
   const form=new URLSearchParams(sent!.body as string);assert.equal(form.get('ContentSid'),contentSid);assert.equal(form.get('ContentVariables'),JSON.stringify({'1':'123456'}));assert.equal(form.has('Body'),false);
   await assert.rejects(provider.prepare({...m,whatsapp:undefined},signal()));
@@ -127,6 +137,7 @@ test('optional voice is disabled by default and sends escaped bounded TwiML only
   const provider=new TwilioProvider('voice',{accountSid:account,authTokenKey:'token',sender:m.sender,voiceEnabled:true},vault,fetcher);
   assert.deepEqual(await (await provider.prepare(m,signal())).dispatch(),{state:'accepted',recordId:callSid});assert.equal(calls,1);
   await assert.rejects(provider.prepare({...m,maxVoiceSeconds:121},signal()));
+  await assert.rejects(provider.prepare({...m,body:'&'.repeat(1600)},signal()));assert.equal(calls,1,'Escaped TwiML must fit the official inline bound before dispatch.');
 });
 
 test('Android transport requires pairing and matching notification receipt; unpaired never dispatches',async()=>{
@@ -142,4 +153,45 @@ test('canonicalization is deterministic and does not guess international destina
   assert.equal(canonicalRecipient('gmail',' User@EXAMPLE.COM '),'User@example.com');assert.equal(canonicalRecipient('whatsapp','+15550000001'),'whatsapp:+15550000001');
   for(const v of ['15550000001','+1 (555) 000-0001','+15550000001,+15550000002','+15550000001\r\nTo: x'])assert.throws(()=>canonicalRecipient('sms',v));
   for(const v of ['User <me@example.com>','me@example.com,other@example.com','me@example.com\r\nBcc: x'])assert.throws(()=>canonicalRecipient('gmail',v));
+});
+
+test('Content setup only GETs exact official records, pins approved plain text, and refuses rich/foreign/stale authority',async()=>{
+  const vault=new Vault();await vault.write('token','fixture');
+  const base={sid:contentSid,account_sid:account,language:'en',types:{'twilio/text':{body:'Capri is {{1}}.'}},variables:{'1':'sample'}};
+  const approval={sid:contentSid,account_sid:account,whatsapp:{status:'approved',content_type:'twilio/text'}};
+  for(const bad of ['none','account','sid','language','rich-alternative','rich-only','not-approved','approval-account','approval-sid','approval-type','extra-variable','missing-variable','malformed-placeholder','oversized'] as const){
+    const content=structuredClone(base) as any,review=structuredClone(approval) as any,urls:string[]=[];
+    if(bad==='account')content.account_sid='AC'+'c'.repeat(32);if(bad==='sid')content.sid='HX'+'e'.repeat(32);if(bad==='language')content.language='fr';
+    if(bad==='rich-alternative')content.types['twilio/card']={title:'rich'};if(bad==='rich-only')content.types={'twilio/card':{title:'rich'}};
+    if(bad==='not-approved')review.whatsapp.status='paused';if(bad==='approval-account')review.account_sid='AC'+'c'.repeat(32);if(bad==='approval-sid')review.sid='HX'+'e'.repeat(32);if(bad==='approval-type')review.whatsapp.content_type='twilio/card';
+    if(bad==='extra-variable')content.variables['2']='extra';if(bad==='missing-variable')content.variables={};if(bad==='malformed-placeholder')content.types['twilio/text'].body='Bad {{name}}';if(bad==='oversized')content.types['twilio/text'].body='a'.repeat(1601);
+    const p=new TwilioProvider('whatsapp',{accountSid:account,authTokenKey:'token',sender:'whatsapp:'+sms.sender},vault,async(url,init)=>{
+      assert.equal(init.method,'GET');assert.equal(init.redirect,'error');assert.equal(url==='https://content.twilio.com/v1/Content/'+contentSid||url==='https://content.twilio.com/v1/Content/'+contentSid+'/ApprovalRequests',true);urls.push(url);return response(url.endsWith('/ApprovalRequests')?review:content);
+    });
+    if(bad==='none'){
+      const t={...await p.approvedPlainText(contentSid,'en',signal()),revision:1,providerGeneration:'generation',checkedAt:Date.now()};assert.equal(renderApprovedContactText(t,{'1':'completed'}),'Capri is completed.');
+      const invalidVariables:Record<string,string>[]=[{},{'1':'completed','2':'extra'},{'1':'{{nested}}'}];for(const variables of invalidVariables)assert.throws(()=>renderApprovedContactText(t,variables));
+      assert.throws(()=>renderApprovedContactText({...t,sha256:'0'.repeat(64)},{'1':'completed'}));assert.throws(()=>renderApprovedContactText({...t,body:'Changed {{1}}.'},{'1':'completed'}));
+    }else await assert.rejects(p.approvedPlainText(contentSid,'en',signal()),bad);
+    assert.equal(urls.length,2);
+  }
+});
+
+test('WhatsApp dispatch refuses unknown pins and mismatched rendered text; local monetary cap never uses obsolete maxPrice',async()=>{
+  const vault=new Vault();await vault.write('token','fixture');let requests=0;
+  const raw={accountSid:account,sid:contentSid,language:'en',body:'Capri is {{1}}.',variables:['1']},template={...raw,sha256:approvedContactTextHash(raw),revision:1,providerGeneration:'generation',checkedAt:Date.now()};
+  const m:OutboundMessage={...sms,channel:'whatsapp',sender:'whatsapp:'+sms.sender,recipient:'whatsapp:'+sms.recipient,body:'Capri is completed.',whatsapp:{contentSid,variables:{'1':'completed'}}};
+  const fetcher:ContactFetch=async(_url,init)=>{requests++;const form=new URLSearchParams(String(init.body));assert.equal(form.has('maxPrice'),false);assert.equal(form.has('MaxPrice'),false);assert.equal(form.has('Body'),false);return response(record(m,'sent'));};
+  for(const approvedText of [undefined,[{...template,accountSid:'AC'+'c'.repeat(32)}],[{...template,sid:'HX'+'e'.repeat(32)}]]){
+    const p=new TwilioProvider('whatsapp',{accountSid:account,authTokenKey:'token',sender:m.sender,approvedText},vault,fetcher);await assert.rejects(p.prepare(m,signal()));
+  }
+  const p=new TwilioProvider('whatsapp',{accountSid:account,authTokenKey:'token',sender:m.sender,approvedText:[template]},vault,fetcher);await assert.rejects(p.prepare({...m,body:'Unreviewed text'},signal()));assert.equal(requests,0);assert.equal((await (await p.prepare(m,signal())).dispatch()).state,'sent');assert.equal(requests,1);
+});
+
+test('Gmail disconnect/cancel during awaited token exchange cannot restore a late token generation',async()=>{
+  const vault=new Vault();let release!:(value:Response)=>void,entered!:()=>void;const waiting=new Promise<void>(r=>entered=r);
+  const p=new GmailProvider({clientId:'client',vaultKey:'gmail',sender:gmailMessage.sender},vault,async()=>{entered();return new Promise<Response>(r=>release=r);},Date.now);
+  const connection=await p.beginConnection('http://127.0.0.1:18601/callback'),finish=p.finishConnection(connection.state,'fixture-code',signal());await waiting;
+  const disconnect=p.disconnect();release(response({access_token:'fixture-access',refresh_token:'fixture-refresh',expires_in:3600,token_type:'Bearer'}));await assert.rejects(finish);await disconnect;assert.equal(await vault.read('gmail'),undefined);
+  await assert.rejects(p.finishConnection(connection.state,'fixture-code',signal()));
 });

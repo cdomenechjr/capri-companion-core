@@ -10,7 +10,7 @@ import {defaults} from '../src/shared';
 import {ContactsService,retainContactJournalAcrossRollback,type ResolvedContact,type ContactChannelPolicy} from '../src/extensions/contacts';
 import {defaultExtensionSettings,type ContactIntent,type ContactExactReview} from '../src/extensions/contracts';
 import {createExtensionHub} from '../src/extensions/hub';
-import {reviewedContactBody,type ContactProvider,type OutboundMessage} from '../src/extensions/contact-providers';
+import {reviewedContactBody,approvedContactTextHash,type ContactProvider,type OutboundMessage} from '../src/extensions/contact-providers';
 import {sha256} from '../src/extensions/policy';
 import {approvalInput,createActionRunner,createContactReviewController,type ExtensionReply,type ExtensionRequest} from '../src/ui/extensions-api';
 
@@ -38,7 +38,8 @@ async function fixture(channel:'sms'|'gmail'|'voice'|'whatsapp'='sms'){
   const provider:ContactProvider={id:'fake-contact',channel,prepare:async()=>{prepares++;onPrepare?.();return {dispatch:async()=>{sends++;return uncertain?{state:'unconfirmed'}:{state:'accepted',recordId:'receipt-'+sends};}};}};
   const scope=()=>{if(!alive)throw Error('Scope ended');return {authority:'trusted-ui' as const,privacyEpoch:epoch,privateSession};};
   const options={providers:[provider],resolve:async()=>resolved,reviewScope:scope,
-    resolveVerification:async()=>{const {verification,...route}=resolved.context.route!;return {route,channel,recipient:message.recipient,channelPolicy:policy,whatsappTemplateSid:message.whatsapp?.contentSid};}};
+    resolveVerification:async()=>{const {verification,...route}=resolved.context.route!;return {route,channel,recipient:message.recipient,channelPolicy:policy,whatsappTemplateSid:message.whatsapp?.contentSid,
+      ...(channel==='whatsapp'?{whatsappTemplate:{accountSid:'AC'+'a'.repeat(32),sid:message.whatsapp!.contentSid,language:'en',body:'Capri verification code: {{1}}',variables:['1'],sha256:approvedContactTextHash({accountSid:'AC'+'a'.repeat(32),sid:message.whatsapp!.contentSid,language:'en',body:'Capri verification code: {{1}}',variables:['1']}),revision:1,providerGeneration:'fixture',checkedAt:now}}:{})};}};
   const make=()=>new ContactsService({store,clock:()=>now,...options});let service=make();
   const challenge=await service.beginVerification('route'),journal=(await store.get('contact-outbox','main'))!;
   await service.dispatch(challenge.requestId,signal());

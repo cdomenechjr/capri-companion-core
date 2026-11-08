@@ -28,6 +28,8 @@ test('Chromium paths and duplicate election precede a delayed writer gate and re
   const source=await readFile(path.resolve('src/desktop/main.ts'),'utf8');
   assert.ok(source.indexOf('const ownsDesktopInstance=prepareDesktopStartup(')<source.indexOf('async function main()'));
   assert.ok(source.indexOf('if(!ownsDesktopInstance)')<source.indexOf('writerGate=await acquireProfileWriter'));
+  assert.ok(source.indexOf('if(managedLaunch&&!maintenanceOnly&&ownsDesktopInstance)claimManagedStartupWriter()')>source.indexOf('const ownsDesktopInstance=prepareDesktopStartup('));
+  assert.ok(source.indexOf('if(managedLaunch&&!maintenanceOnly&&ownsDesktopInstance)claimManagedStartupWriter()')<source.indexOf('async function main()'));
   assert.equal(source.includes("app.setPath('userData'"),false);
  }finally{release?.();await rm(root,{recursive:true,force:true});}
 });

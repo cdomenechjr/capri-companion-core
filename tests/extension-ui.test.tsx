@@ -158,7 +158,9 @@ test('invalid input and missing task scope are refused locally without dispatch'
   const {calls,request}=fakeService(()=>assert.fail('nothing should be sent'));const runner=createActionRunner({request});
   assert.equal((await runner.run('security/custom-scan',{target:'..\\relative'})!).state,'invalid');
   assert.equal((await runner.run('security/custom-scan',{target:'C:\\Folder\\..\\x'})!).state,'invalid');
-  assert.equal((await runner.run('contacts/configure-twilio',{accountSid:'nope',sender:'+15551234567',voiceEnabled:false})!).state,'invalid');
+  assert.equal((await runner.run('contacts/configure',{enabled:'yes',automaticEnabled:false} as any)!).state,'invalid');
+  for(const action of['contacts/configure-gmail','contacts/configure-twilio','contacts/verify-begin','contacts/verify-complete','contacts/add-rule','contacts/revoke-rule','contacts/budget','contacts/reconcile'])
+    assert.equal(action in uiActionSchemas,false,action+' is desktop main-owner administration, never generic extension HTTP');
   assert.equal((await runner.run('agents/start',{provider:'codex',workspaceId:'ws-1',prompt:'Run checks'})!).state,'invalid','delegation needs a task');
   assert.equal((await runner.run('cursor/configure',{durationMs:5} as any)!).state,'invalid','trials are bounded');
   assert.equal((await runner.run('skills/review',{skillId:'s',manifestSha256:A,approved:true} as any)!).state,'invalid','no extra authority fields');
@@ -169,23 +171,25 @@ test('secrets, prompts, bodies, addresses and paths never reach the log, outcome
   const secret='tw-secret-token-0000000000',prompt='Summarise my private medical notes',path=['C:','Users','me','Private'].join('\\'),address='alex.private@example.com';
   const echo=(body:any)=>'Error: '+JSON.stringify(body)+' '+address;
   // Three echo shapes: bridge-style error text, HTTP error with an echoed body, and a well-formed rejected receipt whose message echoes the input.
+  // Contact credentials no longer travel here at all (see contact-owner-ui tests); a skills draft carries the secret-shaped text instead.
   const {calls,request}=fakeService((_m,route,body)=>route.endsWith('/agents/start')?{ok:false,status:400,body:{error:echo(body)},message:echo(body)}
-    :route.endsWith('/contacts/configure-gmail')?{ok:false,status:409,message:'x',body:{id:'rc-1',requestId:body.requestId,feature:'contacts',action:'configure-gmail',observedAt:1,outcome:'rejected',effect:'none',error:{code:'invalid-request',message:echo(body).slice(0,200),retry:'never'}}}
+    :route.endsWith('/skills/draft')?{ok:false,status:409,message:'x',body:{id:'rc-1',requestId:body.requestId,feature:'skills',action:'draft',observedAt:1,outcome:'rejected',effect:'none',error:{code:'invalid-request',message:echo(body).slice(0,200),retry:'never'}}}
     :{ok:false,message:echo(body)});
   const runner=createActionRunner({request,newRequestId:()=>'req-x'});
-  const results=[await runner.run('contacts/configure-twilio',{accountSid:'AC'+'0'.repeat(32),sender:'+15551234567',authToken:secret,voiceEnabled:false})!,
+  const draft=teachInput({...emptyTeachForm,name:'Mail '+address,description:'Uses '+secret,summary:'Send it',keywords:'mail',tools:'read_file',steps:'Read',verify:'Check',checks:'artifact-readback'},'k1');
+  const results=[await runner.run('skills/draft',{...draft,description:'Uses '+secret})!,
     await runner.run('agents/start',{provider:'codex',workspaceId:'ws-1',prompt},{taskId:'task-1'})!,
     await runner.run('security/custom-scan',{target:path})!,
-    await runner.run('contacts/configure-gmail',{clientId:'client-id-12345',sender:address,clientSecret:secret})!];
-  assert.equal(calls[0].body.input.authToken,secret,'the write-only secret goes only to the service');
+    await runner.run('contacts/configure',{enabled:true,automaticEnabled:false})!];
+  assert.equal(calls[0].body.input.description,'Uses '+secret,'the input goes only to the service');
   assert.equal(calls[1].body.taskId,'task-1');
   const logged=JSON.stringify(runner.log());
-  const rendered=renderToStaticMarkup(<>{['contacts/configure-twilio','agents/start','security/custom-scan','contacts/configure-gmail'].map(s=><ActionNote key={s} runner={runner} slot={s}/>)}</>);
-  const outcomes=JSON.stringify(results.map(r=>r.message))+JSON.stringify(['contacts/configure-twilio','agents/start','security/custom-scan','contacts/configure-gmail'].map(s=>runner.outcome(s)?.message));
+  const rendered=renderToStaticMarkup(<>{['skills/draft','agents/start','security/custom-scan','contacts/configure'].map(s=><ActionNote key={s} runner={runner} slot={s}/>)}</>);
+  const outcomes=JSON.stringify(results.map(r=>r.message))+JSON.stringify(['skills/draft','agents/start','security/custom-scan','contacts/configure'].map(s=>runner.outcome(s)?.message));
   for(const text of[logged,rendered,outcomes])for(const value of[secret,prompt,path,address,'Private','medical','requestId','Error:'])assert.ok(!text.includes(value),value+' leaked');
-  assert.deepEqual(results.map(r=>r.state),['unconfirmed','unconfirmed','unconfirmed','rejected']);
+  assert.deepEqual(results.map(r=>r.state),['rejected','unconfirmed','unconfirmed','unconfirmed']);
   assert.match(results[1].message,/The service rejected the input\./,'whitelisted status codes still give useful text');
-  assert.match(results[3].message,/^The service rejected the input\.$/,'a rejected receipt shows only its error-code hint');
+  assert.match(results[0].message,/^The service rejected the input\.$/,'a rejected receipt shows only its error-code hint');
   assert.match(rendered,/The outcome is unknown\. Do not repeat it/);
 });
 
@@ -198,6 +202,7 @@ test('delivery shows accepted or sent only with matching remote evidence, and ou
   assert.equal(deliveryBadge(delivery({state:'pending'})).tag,'PENDING');
   const contacts={providers:[{channel:'gmail' as const,configured:true,secretStored:true,senderHint:'m…@example.com'}],
     routes:[{id:'route-1',revision:1,channel:'sms' as const,kind:'contact' as const,label:'Alex',enabled:true,verified:false}],rules:[],
+    // An older service's unenforced monthly count is ignored, never displayed as a spending control.
     budget:{monthlyMessageLimit:20,usedThisMonth:null},
     outbox:[{receipt:delivery({requestId:'send-1',state:'pending'}),channel:'sms' as const,routeLabel:'Alex',draftKept:true,approvalRequired:true},
       {receipt:delivery({requestId:'send-2',state:'unconfirmed'}),channel:'gmail' as const,routeLabel:'Me',draftKept:true,approvalRequired:false},
@@ -208,13 +213,14 @@ test('delivery shows accepted or sent only with matching remote evidence, and ou
   assert.ok(disabledButton(html,'Approve this exact message'),'no blind approval without current exact details');
   assert.ok(disabledButton(html,'Show exact message'),'this service lacks the review-details action');
   assert.match(html,/Private session without a trusted privacy epoch/);
-  assert.equal((html.match(/Check provider record/g)??[]).length,2);
+  assert.equal((html.match(/Check provider record/g)??[]).length,3,'pending, unconfirmed and sent rows can be observed read-only');
   assert.doesNotMatch(html,/<button[^>]*>[^<]*(?:resend|send again|retry)[^<]*<\/button>/i,'no resubmission control exists');
   assert.equal((html.match(/Draft kept/g)??[]).length,3,'pending row once; unconfirmed badge title and text once each; none for the sent row');
   assert.match(html,/secret stored \(hidden\)/);assert.doesNotMatch(html,/connected/i);
-  assert.match(html,/type="password"[^>]*value=""/,'secret fields render empty and masked');
+  assert.doesNotMatch(html,/type="password"/,'without the desktop main-owner bridge no credential field exists at all');
+  assert.match(html,/Contact setup is available only in the Capri desktop window/);
   assert.match(html,/NOT VERIFIED/);assert.match(html,/Private session: private content is never sent automatically/);
-  assert.match(html,/Usage unknown/);
+  assert.doesNotMatch(html,/monthly|this month|Usage unknown/i,'no unenforced monthly-count control or claim');
 });
 
 test('Defender results come only from evidence correlated with the job',()=>{
@@ -296,7 +302,7 @@ test('a hung bridge times out to unconfirmed, frees UI capacity, never resends a
   const timers=fakeTimers(),bridge=hungBridge();let n=0;
   const runner=createActionRunner({request:bridge.request,setTimer:timers.setTimer,newRequestId:()=>'req-'+(++n)});
   const started=[runner.run('agents/start',{provider:'codex',workspaceId:'ws-1',prompt:'Run checks'},{taskId:'task-1'})!,
-    runner.run('updates/check',{})!,runner.run('security/quick-scan',{})!,runner.run('contacts/budget',{monthlyMessageLimit:5})!];
+    runner.run('updates/check',{})!,runner.run('security/quick-scan',{})!,runner.run('skills/revoke',{skillId:'weekly'})!];
   await tick();
   assert.equal(bridge.calls.length,4);assert.equal(runner.run('cursor/configure',{enabled:false}),undefined,'ordinary capacity is full');
   // Recovery has its own lane: it dispatches while four ordinary calls hang, and creates no authority.
@@ -522,7 +528,7 @@ test('returned and stored outcomes keep only validated identities and fixed code
   const held:ReturnType<typeof deferred<ExtensionReply>>[]=[];
   const {request}=fakeService((_m,route,body)=>{
     const rejected={id:'rc-'+body.requestId,requestId:body.requestId,feature:route.split('/')[3],action:route.split('/')[4],observedAt:1,outcome:'rejected',effect:'none',error:{code:'forbidden',message:marker,retry:'never'}};
-    if(route.endsWith('/contacts/reconcile')){const d=deferred<ExtensionReply>();held.push(d);return d.promise;}
+    if(route.endsWith('/security/inspect')){const d=deferred<ExtensionReply>();held.push(d);return d.promise;}
     if(route.endsWith('/agents/start'))return {ok:true,body:{...rejected,outcome:'unconfirmed',effect:'unknown',error:{code:'unconfirmed',message:marker,retry:'read-only-reconcile'}}};
     return {ok:false,status:403,message:marker,body:rejected};
   });
@@ -537,21 +543,21 @@ test('returned and stored outcomes keep only validated identities and fixed code
   // Private e1 -> public e2 on one shared runner.
   const p1=runner.namespace('ext','private@e1'),s1=scopedRunner(runner,p1);
   assert.equal(runner.namespace('ext','private@e1'),p1,'stable while the fence is unchanged');
-  const verified=await s1.run('contacts/verify-begin',{routeId:'route-1'},{slot:'contacts/verify-begin:route-1'})!;
+  const verified=await s1.run('skills/revoke',{skillId:'route-1'},{slot:'skills/revoke:route-1'})!;
   assert.equal(verified.state,'rejected');
-  const late=s1.run('contacts/reconcile',{requestId:'send-1'},{slot:'contacts/reconcile:send-1'})!;await tick();
-  assert.equal(s1.outcome('contacts/reconcile:send-1')?.state,'pending');
+  const late=s1.run('security/inspect',{jobId:'send-1'},{slot:'security/inspect:send-1'})!;await tick();
+  assert.equal(s1.outcome('security/inspect:send-1')?.state,'pending');
   const p2=runner.namespace('ext','public@e2'),s2=scopedRunner(runner,p2);
   assert.notEqual(p2,p1);
-  assert.equal(s1.outcome('contacts/verify-begin:route-1'),undefined,'retired outcomes are deleted, not hidden');
-  assert.equal(s1.outcome('contacts/reconcile:send-1'),undefined);
-  assert.equal(s1.run('contacts/verify-begin',{routeId:'route-1'},{slot:'contacts/verify-begin:route-1'}),undefined,'a retired namespace accepts no new work');
-  assert.equal(s2.busy('contacts/reconcile:send-1'),true,'the unsettled effect still blocks the same control in the new namespace');
-  held[0].resolve({ok:false,status:403,message:marker,body:{id:'rc-late',requestId:'req-4',feature:'contacts',action:'reconcile',observedAt:2,outcome:'rejected',effect:'none',error:{code:'forbidden',message:marker,retry:'never'}}});
+  assert.equal(s1.outcome('skills/revoke:route-1'),undefined,'retired outcomes are deleted, not hidden');
+  assert.equal(s1.outcome('security/inspect:send-1'),undefined);
+  assert.equal(s1.run('skills/revoke',{skillId:'route-1'},{slot:'skills/revoke:route-1'}),undefined,'a retired namespace accepts no new work');
+  assert.equal(s2.busy('security/inspect:send-1'),true,'the unsettled effect still blocks the same control in the new namespace');
+  held[0].resolve({ok:false,status:403,message:marker,body:{id:'rc-late',requestId:'req-4',feature:'security',action:'inspect',observedAt:2,outcome:'rejected',effect:'none',error:{code:'forbidden',message:marker,retry:'never'}}});
   const settled=await late;await tick();
   assert.ok(!JSON.stringify(settled).includes(marker));
-  assert.equal(s1.outcome('contacts/reconcile:send-1'),undefined,'a late receipt cannot reinsert a retired view');
-  assert.equal(s2.outcome('contacts/reconcile:send-1'),undefined);assert.equal(s2.busy('contacts/reconcile:send-1'),false,'settling frees the control');
+  assert.equal(s1.outcome('security/inspect:send-1'),undefined,'a late receipt cannot reinsert a retired view');
+  assert.equal(s2.outcome('security/inspect:send-1'),undefined);assert.equal(s2.busy('security/inspect:send-1'),false,'settling frees the control');
   assert.notEqual(runner.namespace('ext','private@e1'),p1,'a namespace is never reused');
 });
 
@@ -590,29 +596,29 @@ test('retirement is irreversible per issued handle: quiescent, after settlement 
   // Quiescent retire: nothing under the namespace is unsettled, so the runner's fence is pruned at once.
   const q=scopedRunner(runner,runner.namespace('ext','private@q1'));
   runner.namespace('ext','public@q2');
-  assert.equal(q.run('contacts/verify-begin',{routeId:'route-1'}),undefined,'a quiescent retired handle starts nothing');
-  assert.equal(q.busy('contacts/verify-begin'),true);assert.equal(bridge.calls.length,0);
+  assert.equal(q.run('skills/revoke',{skillId:'route-1'}),undefined,'a quiescent retired handle starts nothing');
+  assert.equal(q.busy('skills/revoke'),true);assert.equal(bridge.calls.length,0);
   // Retire after settlement: the handle's own request settles first, then the namespace is retired.
   const s=scopedRunner(runner,runner.namespace('ext','private@s1'));
-  const first=s.run('contacts/verify-begin',{routeId:'route-1'})!;await tick();
+  const first=s.run('skills/revoke',{skillId:'route-1'})!;await tick();
   bridge.calls[0].reply.resolve(rejectedReceipt(bridge.calls[0]));assert.equal((await first).state,'rejected');
   runner.namespace('ext','public@s2');
-  assert.equal(s.run('contacts/verify-begin',{routeId:'route-1'}),undefined,'a handle retired after settlement starts nothing');
-  assert.equal(s.outcome('contacts/verify-begin'),undefined);
+  assert.equal(s.run('skills/revoke',{skillId:'route-1'}),undefined,'a handle retired after settlement starts nothing');
+  assert.equal(s.outcome('skills/revoke'),undefined);
   // Stale handle after a late receipt: its pending request settles after retirement and frees capacity, nothing more.
   const l=scopedRunner(runner,runner.namespace('ext','private@l1'));
-  const pending=l.run('contacts/reconcile',{requestId:'send-1'})!;await tick();
+  const pending=l.run('security/inspect',{jobId:'send-1'})!;await tick();
   const next=scopedRunner(runner,runner.namespace('ext','public@l2'));
   assert.equal(runner.pendingCount(),1);
   bridge.calls[1].reply.resolve(rejectedReceipt(bridge.calls[1]));const late=await pending;await tick();
   assert.equal(late.state,'rejected');assert.ok(!JSON.stringify(late).includes('neutral-echo-marker-retire'));
   assert.equal(runner.pendingCount(),0,'the settled request released its capacity');assert.equal(runner.abandonedCount(),0);
-  assert.equal(l.outcome('contacts/reconcile'),undefined,'the late receipt is not stored under the retired namespace');
-  for(const handle of[q,s,l])assert.equal(handle.run('contacts/reconcile',{requestId:'send-1'}),undefined,'stale handles stay retired after the fence is pruned');
+  assert.equal(l.outcome('security/inspect'),undefined,'the late receipt is not stored under the retired namespace');
+  for(const handle of[q,s,l])assert.equal(handle.run('security/inspect',{jobId:'send-1'}),undefined,'stale handles stay retired after the fence is pruned');
   assert.equal(bridge.calls.length,2,'no stale handle dispatched');
   assert.ok(!JSON.stringify(runner.log()).includes('neutral-echo-marker-retire'));
   // The current handle still works on the same shared runner.
-  const fresh=next.run('contacts/reconcile',{requestId:'send-1'})!;await tick();assert.equal(bridge.calls.length,3);
+  const fresh=next.run('security/inspect',{jobId:'send-1'})!;await tick();assert.equal(bridge.calls.length,3);
   bridge.calls[2].reply.resolve(rejectedReceipt(bridge.calls[2]));assert.equal((await fresh).state,'rejected');
 });
 

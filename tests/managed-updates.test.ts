@@ -8,12 +8,13 @@ import {spawn} from 'node:child_process';
 import JSZip from 'jszip';
 import {defaults} from '../src/shared';
 import {Store,seal,unseal} from '../src/server/store';
-import {acquireProfileWriter} from '../src/desktop/runtime-profile';
+import {acquireProfileWriter,readProfileProtectionContext} from '../src/desktop/runtime-profile';
 import {createMaintenanceOperations,openExistingProfile,type ProtectedStorage} from '../src/desktop/update-maintenance';
 import {canonicalJson,releaseSigningPayload} from '../src/extensions/policy';
+import {contactAuthorityKind,emptyContactAuthority,parseContactAuthority,writeContactAuthority} from '../src/extensions/contact-admin';
 import type {ReleaseManifest} from '../src/extensions/contracts';
 import {inspectUpdateZip,type UpdateSnapshot,type UpdateState} from '../src/extensions/updates';
-import {ManagedChannel,ManagedUpdateController,bootstrapManagedHost,managedHash,verifyManagedAcceptance,brokerInventoryOrder,managedDesktopData,managedOwnerSha256,waitManagedNormalExit,serveManagedControl,managedControlCommand,waitManagedHealth,managedStartupTimeoutMs,captureManagedChannel,type ManagedConfig,type ManagedTrust,type ManagedProcesses,type ManagedSession} from '../src/extensions/managed-update-host';
+import {ManagedChannel,ManagedUpdateController,bootstrapManagedHost,managedHash,verifyManagedAcceptance,brokerInventoryOrder,managedDesktopData,prepareManagedDesktopContext,managedOwnerSha256,waitManagedNormalExit,serveManagedControl,managedControlCommand,waitManagedHealth,managedStartupTimeoutMs,captureManagedChannel,type ManagedConfig,type ManagedTrust,type ManagedProcesses,type ManagedSession} from '../src/extensions/managed-update-host';
 
 // Real controller + encrypted SQLite/complete filesystem backups + offline RPCs.
 // Process, cursor, protected-storage and publication authority are explicit fakes.
@@ -78,15 +79,27 @@ test('lost captured child channel sends EOF for cooperative exit without treatin
  }finally{channel.close();if(child.exitCode===null)child.kill();}
 });
 
-async function fixture(){
+async function fixture(options:{contactAuthority?:boolean}={}){
  const parent=path.resolve('dist');await fs.mkdir(parent,{recursive:true});const root=await fs.mkdtemp(path.join(parent,'managed-update-'));
  const profilesRoot=path.join(root,'profiles'),hostRoot=path.join(root,'host'),appData=path.join(root,'appdata'),attestationRoot=path.join(root,'attestations');for(const d of [profilesRoot,hostRoot,appData,attestationRoot])await fs.mkdir(d);
  const generation=randomUUID(),profile=path.join(profilesRoot,generation);await fs.mkdir(profile);const wrapping=randomBytes(32),key=randomBytes(32),protection:ProtectedStorage={isEncryptionAvailable:()=>true,encryptString:v=>Buffer.from(seal(v,wrapping)),decryptString:b=>unseal(b.toString(),wrapping)};
+ await fs.writeFile(path.join(profile,'Local State'),JSON.stringify({os_crypt:{encrypted_key:Buffer.concat([Buffer.from('DPAPI'),wrapping]).toString('base64')},permissions:{foreign:true}}));
  await fs.writeFile(path.join(profile,'private.config'),protection.encryptString(JSON.stringify({storageKey:key.toString('base64')})));
- const s=await new Store(path.join(profile,'data'),key).init();await s.put('settings',{id:'main',...defaults,speechEngine:'designed-hq'});await s.put('memory',{id:'retained-memory',text:'isolated fixture'});await s.close();
+ const initialAuthority=emptyContactAuthority();
+ initialAuthority.providers.twilio={generation:randomUUID(),enabled:true,connected:true,sender:'+15550000001',accountSid:'AC'+'a'.repeat(32)};
+ initialAuthority.routes.push({id:'route',recipientId:'recipient',revision:1,channel:'sms',destination:'+15550000002',kind:'self',enabled:true,optedIn:true,providerGeneration:initialAuthority.providers.twilio.generation});
+ initialAuthority.templates.push({id:'template',revision:1,enabled:true,body:'Completed.',contentClass:'public'});
+ initialAuthority.workflows.push({id:'workflow',revision:1,enabled:true,trigger:'task-completed',routeId:'route',templateId:'template'});
+ initialAuthority.rules.push({id:'rule',binding:{routeId:'route',routeRevision:1,recipientId:'recipient',recipientSha256:managedHash('+15550000002'),workflowId:'workflow',templateId:'template',templateVersion:1,bodySha256:managedHash('Completed.')},createdAt:clock-100,expiresAt:clock+10000,revoked:false});
+ const retainedAuthority=structuredClone(initialAuthority);retainedAuthority.revision++;
+ retainedAuthority.routes[0].enabled=false;retainedAuthority.routes[0].optedIn=false;retainedAuthority.routes[0].revision++;
+ retainedAuthority.rules[0].revoked=true;retainedAuthority.providers.twilio!.generation=randomUUID();
+ retainedAuthority.templates[0].revision++;retainedAuthority.events.push({id:'completed-event',retired:true,requests:[]});
+ const s=await new Store(path.join(profile,'data'),key).init();await s.put('settings',{id:'main',...defaults,speechEngine:'designed-hq'});await s.put('memory',{id:'retained-memory',text:'isolated fixture'});
+ if(options.contactAuthority)await writeContactAuthority(s,initialAuthority);await s.close();
  const keys=generateKeyPairSync('ed25519'),pem=keys.publicKey.export({format:'pem',type:'spki'}).toString();
  const fakePin={path:path.join(root,'unused-fake-process'),sha256:managedHash('neutral process fixture')};
- const config:ManagedConfig={schemaVersion:1,installationId:randomUUID(),ownerSha256:managedHash(randomBytes(32)),root:hostRoot,profilesRoot,appData,port:18601,dataVersion:1,pollMs:3600000,keys:{fixture:pem},channel:'preview',arch:'x64',minimumSequence:1,feed:{origin:'https://127.0.0.1:19443',ca:'not used by injected transport',certificateSha256:managedHash('fixture ca')},brokerJournal:path.join(root,'broker.json'),attestationRoot,node:fakePin,controller:fakePin,launcher:fakePin,supervisor:fakePin,windowsHelper:fakePin,maintenance:{root:path.join(root,'unused-maintenance-runtime'),snapshot:undefined as any}};
+ const config:ManagedConfig={schemaVersion:1,installationId:randomUUID(),ownerSha256:managedOwnerSha256(),root:hostRoot,profilesRoot,appData,port:18601,dataVersion:1,pollMs:3600000,keys:{fixture:pem},channel:'preview',arch:'x64',minimumSequence:1,feed:{origin:'https://127.0.0.1:19443',ca:'not used by injected transport',certificateSha256:managedHash('fixture ca')},brokerJournal:path.join(root,'broker.json'),attestationRoot,node:fakePin,controller:fakePin,launcher:fakePin,supervisor:fakePin,windowsHelper:fakePin,maintenance:{root:path.join(root,'unused-maintenance-runtime'),snapshot:undefined as any}};
  const trust:ManagedTrust={config,file:path.join(root,'trust.json'),sha256:managedHash('isolated-public-trust'),assert:async()=>{}};
  async function snapshot(version:string,sequence:number){const zip=new JSZip(),report=JSON.stringify({fixture:true,version});zip.file('win-unpacked/Capri.exe','neutral fixture executable '+version);zip.file('win-unpacked/resources/app.asar','neutral fixture app '+version);zip.file('win-unpacked/resources.pak','neutral electron fixture');zip.file('VERIFICATION.json',report);
   const bytes=await zip.generateAsync({type:'nodebuffer'}),inspected=await inspectUpdateZip(bytes,1000000);
@@ -96,6 +109,7 @@ async function fixture(){
  }
  const old=await snapshot('0.6.0',1),candidate=await snapshot('0.7.0-dev.1',2);
  config.maintenance.snapshot=candidate.snapshot;
+ await fs.writeFile(trust.file,JSON.stringify(config));trust.sha256=managedHash(JSON.stringify(config));
  for(const [relative,bytes] of [[`snapshots/${old.snapshot.id}/package.zip`,old.bytes],...[...old.inspected.contents].map(([name,b])=>[`snapshots/${old.snapshot.id}/app/${name}`,b])] as [string,Buffer][]){const file=path.join(hostRoot,...relative.split('/'));await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,bytes);}
  const state:UpdateState={schemaVersion:1,sequenceFloor:1,active:old.snapshot,phase:'healthy',nonce:randomUUID()};await fs.writeFile(path.join(hostRoot,'state.json'),canonicalJson(state));
  const taskEvidence=[{id:'fixture-review',owner:'codex',reviewer:'claude',reviewSha256:managedHash('review'),checks:['candidate:typecheck','candidate:test','candidate:build'].map(id=>({id,sha256:managedHash(id)}))}];
@@ -108,20 +122,29 @@ async function fixture(){
  let owner:ManagedChannel,exitNormal:()=>Promise<void>,dropChannel:()=>void,rejectExit:()=>void,onHealth:((sequence:number)=>Promise<void>)|undefined;
  const binding={routeId:'route',routeRevision:1,recipientId:'recipient',recipientSha256:'a'.repeat(64),workflowId:'workflow',templateId:'template',templateVersion:1,bodySha256:'b'.repeat(64)};
  async function effects(directory:string){const store=await openExistingProfile(directory,protection);
+  try{
+  if(options.contactAuthority)await writeContactAuthority(store,retainedAuthority);
   const entry=(id:string,state:string)=>({intent:{requestId:id,binding},createdAt:clock-100,phase:'final',receipt:{id:'remote-'+id,requestId:id,binding,adapter:'fixture',state,observedAt:clock,evidence:state==='unconfirmed'?{source:'none'}:{source:'service-receipt',recordId:'record-'+id}},fingerprint:'c'.repeat(64),channel:'gmail'});
   await store.put('contact-outbox-receipt',{id:'archived',version:1,entry:entry('archived','sent')});await store.put('contact-outbox-approval',{id:'consumed',expiresAt:clock+1000});
   await store.put('contact-outbox',{id:'main',version:2,entries:[entry('hot','unconfirmed')],challenges:[],consumedApprovals:[],verifiedRoutes:[],archiveHead:'archived',approvalHead:'consumed'});
-  for(const [id,state]of [['claim','unconfirmed'],['delivered','delivered']])await store.put('paired-android-receipt',{id,deviceId:'fixture-device',notificationId:id,bodySha256:managedHash(id),state});await store.close();
+  for(const [id,state]of [['claim','unconfirmed'],['delivered','delivered']])await store.put('paired-android-receipt',{id,deviceId:'fixture-device',notificationId:id,bodySha256:managedHash(id),state});}finally{await store.close();}
  }
  const processes:ManagedProcesses={
   async reconcile(journal){return !journal.normal||normalActive===0;},
   async maintenance(_snapshot,context,prepared,armed,signal){signal.throwIfAborted();await prepared({fixture:true} as any);await armed({fixture:true} as any);const gate=await acquireProfileWriter(config);active++;events.push('maintenance:'+context.generation);const p=pair();
-   const operate=await createMaintenanceOperations({trust,generation:context.generation,gate,protection,restoreCursor:async()=>true});
+   try{
+   const selected=path.join(profilesRoot,context.generation),env={CAPRI_MANAGED_TRUST:trust.file,CAPRI_MANAGED_TRUST_SHA256:trust.sha256,CAPRI_MANAGED_EPOCH:context.epoch,CAPRI_MANAGED_GENERATION:context.generation,CAPRI_MANAGED_CHANNEL:randomBytes(32).toString('hex')};
+   // The fake OSCrypt key is read from the ACTUAL selected independent session.
+   // A new fresh context therefore cannot accidentally inherit the old fake key.
+   const helperData=prepareManagedDesktopContext(appData,selected,env,gate,()=>{},signal),sessionKey=Buffer.from(JSON.parse(readProfileProtectionContext(helperData,appData).toString()).os_crypt.encrypted_key,'base64').subarray(5);
+   const sessionProtection:ProtectedStorage={isEncryptionAvailable:()=>true,encryptString:v=>Buffer.from(seal(v,sessionKey)),decryptString:b=>unseal(b.toString(),sessionKey)};
+   const operate=await createMaintenanceOperations({trust,generation:context.generation,gate,protection:sessionProtection,restoreCursor:async()=>true});
    p.server.handler=async(method,input)=>{if(method==='restore')await pausedRestore?.();if(method==='migrate')onMigrate?.();if(method==='journal'&&input.operation==='put'&&failJournalOnce){failJournalOnce=false;throw Error('simulated crash during retention');}return operate(method,input);};
    let stopped=false;const session={channel:p.client,stop:async()=>{if(stopped)return true;await operate('close',{});stopped=true;active--;await gate.close();p.close();sessions.delete(session);return true;}};sessions.add(session);return session;
+   }catch(error){active--;p.close();await gate.close();throw error;}
   },
-  async normal(snapshot,context,save,signal){signal.throwIfAborted();const gate=await acquireProfileWriter(config);active++;normalActive++;starts++;events.push('normal:'+context.generation);const directory=path.join(profilesRoot,context.generation);if(snapshot.manifest.release.sequence===2)await effects(directory);
-   const p=pair();owner=p.server;await save({pid:process.pid,created:'1',snapshotId:snapshot.id,...context});let activated=false;
+  async normal(snapshot,context,save,signal){signal.throwIfAborted();const gate=await acquireProfileWriter(config);active++;normalActive++;starts++;events.push('normal:'+context.generation);let abandonedPair:ReturnType<typeof pair>|undefined;try{const directory=path.join(profilesRoot,context.generation);if(snapshot.manifest.release.sequence===2)await effects(directory);
+   const p=pair();abandonedPair=p;owner=p.server;await save({pid:process.pid,created:'1',snapshotId:snapshot.id,...context});let activated=false;
    p.server.handler=async(method,input)=>{
     if(method==='health'){await onHealth?.(snapshot.manifest.release.sequence);const value:any={nonce:context.nonce,epoch:context.epoch,version:snapshot.manifest.release.version,dataVersion:1,generation:context.generation,profile:directory,installationId:config.installationId,trustSha256:trust.sha256,writer:gate.owned(),quiescent:!activated};if(failHealth&&snapshot.manifest.release.sequence===2)value.writer=false;if(wrongHealth)value[wrongHealth]='wrong';return value;}
     if(method==='shutdown'){events.push('controller-shutdown');return {closing:true};}
@@ -133,11 +156,12 @@ async function fixture(){
    const finish=async()=>{if(stopped)return;stopped=true;active--;normalActive--;await gate.close();p.close();sessions.delete(session);prove(true);};
    exitNormal=finish;dropChannel=()=>p.close();rejectExit=()=>prove(false);
    const session={channel:p.client,exited:()=>exitProof,stop:async()=>{if(uncertainStop)return false;if(!stopped)try{await p.client.request('shutdown',{});}catch{/* Simulated process exit remains independent proof. */}await finish();return true;}};sessions.add(session);return session;
+   }catch(error){active--;normalActive--;abandonedPair?.close();await gate.close();throw error;}
   }
  };
  const transport={read:async(url:string)=>url.endsWith('/manifest.json')?Buffer.from(JSON.stringify(candidate.snapshot.manifest)):candidate.bytes};
  const controller=()=>new ManagedUpdateController(trust,processes,()=>now,transport);
- return {root,profile,trust,config,generation,protection,candidate,old,events,controller,processes,
+ return {root,profile,trust,config,generation,protection,candidate,old,events,controller,processes,initialAuthority,retainedAuthority,
   health:(value:boolean)=>{failHealth=!value;},failOperational:()=>{failOperational=true;},wrongHealth:(value:string)=>{wrongHealth=value;},uncertainStop:(value:boolean)=>{uncertainStop=value;},failJournal:()=>{failJournalOnce=true;},pauseRestore:(fn:()=>Promise<void>)=>{pausedRestore=fn;},expireDuringMigration:()=>{onMigrate=()=>{now=clock+20000;};},starts:()=>starts,posts:()=>posts,
   ownerStop:()=>owner.request('stop',{}),ownerQuit:()=>owner.request('quit',{}),exitNormal:()=>exitNormal(),dropChannel:()=>dropChannel(),rejectExit:()=>rejectExit(),
   ownerRequest:(method:string,input:unknown)=>owner.request(method,input),onHealth:(fn:(sequence:number)=>Promise<void>)=>{onHealth=fn;},
@@ -241,12 +265,51 @@ test('Stop retains a durable in-flight normal identity when launch never returns
 });
 
 test('controller performs actual offline rollback across physical generations retaining hot/cold/approval/paired evidence without repost',async()=>{
- const f=await fixture(),controller=await f.controller().open();try{await controller.start(true);f.health(false);assert.deepEqual(await controller.check(),{outcome:'rolled-back'});
+ const f=await fixture({contactAuthority:true}),controller=await f.controller().open();try{await controller.start(true);f.health(false);assert.deepEqual(await controller.check(),{outcome:'rolled-back'});
   const state=await f.state(),journal=await f.journal();assert.equal(state.sequenceFloor,2);assert.equal(state.active.manifest.release.version,'0.6.0');assert.notEqual(journal.generation,f.generation);assert.equal(journal.failedGeneration,f.generation);assert.equal(f.posts(),0);
   const recovered=await openExistingProfile(path.join(f.config.profilesRoot,journal.generation),f.protection);
-  try{assert.equal((await recovered.get('contact-outbox','main'))?.entries[0].receipt.state,'unconfirmed');assert.equal((await recovered.get('contact-outbox-receipt','archived'))?.entry.receipt.state,'sent');assert.equal((await recovered.get('contact-outbox-approval','consumed'))?.expiresAt,clock+1000);assert.equal((await recovered.get('paired-android-receipt','claim'))?.state,'unconfirmed');assert.equal((await recovered.get('paired-android-receipt','delivered'))?.state,'delivered');assert.equal((await recovered.get('settings','main'))?.speechEngine,'designed-hq');}finally{await recovered.close();}
+  try{assert.equal((await recovered.get('contact-outbox','main'))?.entries[0].receipt.state,'unconfirmed');assert.equal((await recovered.get('contact-outbox-receipt','archived'))?.entry.receipt.state,'sent');assert.equal((await recovered.get('contact-outbox-approval','consumed'))?.expiresAt,clock+1000);assert.equal((await recovered.get('paired-android-receipt','claim'))?.state,'unconfirmed');assert.equal((await recovered.get('paired-android-receipt','delivered'))?.state,'delivered');assert.equal((await recovered.get('settings','main'))?.speechEngine,'designed-hq');
+   // This went through the controller's contactStores -> fixed journal RPC,
+   // not only the separate in-process maintenance retain operation.
+   assert.deepEqual(parseContactAuthority(await recovered.get(contactAuthorityKind,'main')),f.retainedAuthority);
+   assert.notDeepEqual(f.retainedAuthority,f.initialAuthority);
+   assert.equal((await recovered.export())[contactAuthorityKind],undefined);
+  }finally{await recovered.close();}
   const encrypted=await fs.readFile(path.join(f.config.root,'backups',state.backup!.id+'.bin'));assert.equal(encrypted.subarray(0,8).toString(),'CAPRIUP1');assert.ok(!encrypted.includes(Buffer.from('retained-memory')));assert.ok(await fs.stat(f.profile));
  }finally{await controller.stop();await f.close();}
+});
+
+test('actual maintenance journal RPC admits contact authority only within existing operation and generation restrictions',async()=>{
+ const f=await fixture({contactAuthority:true}),controller=await f.controller().open(),maintenance=f.processes.maintenance.bind(f.processes);let exercised=0;
+ // Enter through the real controller so the current phase/epoch remain genuine.
+ f.processes.maintenance=async(...args)=>{const session=await maintenance(...args);try{
+  const rpc=(input:object)=>session!.channel.request('journal',input),base={generation:f.generation,kind:contactAuthorityKind,id:'main'};
+  const current=await rpc({...base,operation:'get'});assert.deepEqual(parseContactAuthority(current),f.initialAuthority);
+  const backup=await session.channel.request('backup'),generation=randomUUID();
+  await session.channel.request('restore',{bytes:backup.bytes,generation});
+  const value={id:'main',...f.retainedAuthority};
+  await rpc({...base,generation,operation:'put',value});
+  assert.deepEqual(parseContactAuthority(await rpc({...base,generation,operation:'get'})),f.retainedAuthority);
+  for(const kind of ['settings','memory','private.config','contact-administration-extra']){
+   await assert.rejects(rpc({...base,kind,operation:'get'}),/Managed operation refused/);
+   await assert.rejects(rpc({...base,generation,kind,operation:'put',value}),/Managed operation refused/);
+  }
+  await assert.rejects(rpc({...base,operation:'put',value}),/Managed operation refused/);
+  await assert.rejects(rpc({...base,generation,operation:'list'}),/Managed operation refused/);
+  await assert.rejects(rpc({...base,generation,operation:'put',value:{...value,id:'different'}}),/Managed operation refused/);
+  await assert.rejects(rpc({generation,kind:contactAuthorityKind,operation:'get'}),/Managed operation refused/);
+  await assert.rejects(rpc({...base,generation,operation:'get',path:'arbitrary'}),/Managed operation refused/);
+  assert.deepEqual(await rpc({...base,operation:'get'}),current,'denied current-generation put must leave authority unchanged');
+  assert.deepEqual(parseContactAuthority(await rpc({...base,generation,operation:'get'})),f.retainedAuthority);
+  exercised++;return session;
+ }catch(error){await session.stop();throw error;}};
+ try{await controller.initializeBackup();assert.equal(exercised,1);assert.equal(f.starts(),0);assert.equal(f.posts(),0);}
+ finally{await controller.stop();await f.close();}
+});
+
+test('rejected fixture maintenance startup releases its captured writer without relaxing the production selection guard',async()=>{
+ const f=await fixture({contactAuthority:true});try{await assert.rejects(f.processes.maintenance(f.candidate.snapshot,{generation:f.generation,epoch:randomUUID()},async()=>{},async()=>{},new AbortController().signal),/Stale managed protection selection/);const gate=await acquireProfileWriter(f.config);try{assert.equal(gate.owned(),true);}finally{await gate.close();}assert.equal(f.starts(),0);assert.equal(f.posts(),0);}
+ finally{await f.close();}
 });
 
 test('controller cold startup accepts only a fresh matching health after the first request timed out',async t=>{
@@ -339,4 +402,9 @@ test('independent published evidence rejects wrong artifact/inventory/review and
   assert.equal(await verifyManagedAcceptance(f.config,{...input,inventorySha256:'0'.repeat(64)}),false);assert.equal(await verifyManagedAcceptance(f.config,{...input,artifact:{...input.artifact,sha256:'0'.repeat(64)}}),false);
   const file=path.join(f.config.attestationRoot,'attestation.json'),attestation=JSON.parse(await fs.readFile(file,'utf8'));attestation.taskEvidence[0].reviewer='codex';await fs.writeFile(file,JSON.stringify(attestation));assert.equal(await verifyManagedAcceptance(f.config,input),false);
  }finally{await f.close();}
+});
+
+test('rejected fixture normal identity persistence releases its unreturned writer and preserves the original error',async()=>{
+ const f=await fixture(),failure=Error('fixture identity persistence failed');try{await assert.rejects(f.processes.normal(f.old.snapshot,{generation:f.generation,epoch:randomUUID(),nonce:randomUUID()},async()=>{throw failure;},new AbortController().signal),error=>error===failure);const gate=await acquireProfileWriter(f.config);try{assert.equal(gate.owned(),true);}finally{await gate.close();}assert.equal(f.posts(),0);}
+ finally{await f.close();}
 });

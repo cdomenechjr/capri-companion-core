@@ -9,7 +9,7 @@ import {Store} from '../src/server/store';
 import {seal,unseal} from '../src/server/store';
 import {acquireProfileWriter,assertManagedProfileLaunch,managedDirectory,runtimeProfile} from '../src/desktop/runtime-profile';
 import {captureClosedProfile,parseClosedProfile,restoreClosedProfile,openExistingProfile,createMaintenanceOperations,type ProtectedStorage} from '../src/desktop/update-maintenance';
-import {ManagedChannel,managedHash,type ManagedTrust,type ManagedConfig} from '../src/extensions/managed-update-host';
+import {ManagedChannel,managedHash,bindManagedProtectionContext,type ManagedTrust,type ManagedConfig} from '../src/extensions/managed-update-host';
 import {defaults} from '../src/shared';
 
 // Generated isolated profiles/keys only. No real safeStorage, provider, device,
@@ -19,10 +19,12 @@ export async function maintenanceFixture(){
  const appData=path.join(root,'appdata'),managed=path.join(root,'host'),profilesRoot=path.join(root,'profiles');for(const dir of [appData,managed,profilesRoot])await fs.mkdir(dir);
  const wrapping=randomBytes(32),key=randomBytes(32);const protection:ProtectedStorage={isEncryptionAvailable:()=>true,encryptString:value=>Buffer.from(seal(value,wrapping)),decryptString:bytes=>unseal(bytes.toString(),wrapping)};
  const generation=randomUUID(),profile=path.join(profilesRoot,generation);await fs.mkdir(profile);
+ await fs.writeFile(path.join(profile,'Local State'),JSON.stringify({os_crypt:{encrypted_key:Buffer.concat([Buffer.from('DPAPI'),wrapping]).toString('base64')}}));
  await fs.writeFile(path.join(profile,'private.config'),protection.encryptString(JSON.stringify({storageKey:key.toString('base64'),adminToken:randomBytes(32).toString('hex')})));
  const store=await new Store(path.join(profile,'data'),key).init();await store.put('settings',{id:'main',...defaults,voice:'Designed A'});await store.put('memory',{id:'personal-format',text:'Neutral fixture memory'});await store.close();
  const config={schemaVersion:1,installationId:randomUUID(),ownerSha256:managedHash(randomBytes(32)),root:managed,profilesRoot,appData,port:18601,dataVersion:1,pollMs:3600000} as ManagedConfig;
  const trust:ManagedTrust={config,file:path.join(root,'public-trust.json'),sha256:managedHash('public fixture trust'),assert:async()=>{}};
+ const bindingGate=await acquireProfileWriter(config);try{await bindManagedProtectionContext(trust,generation,bindingGate);}finally{await bindingGate.close();}
  return {root,profile,config,trust,generation,key,protection,close:async()=>{wrapping.fill(0);key.fill(0);assert.equal(path.dirname(root),parent);await fs.rm(root,{recursive:true,force:true});}};
 }
 

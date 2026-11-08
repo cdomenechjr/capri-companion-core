@@ -11,6 +11,7 @@ import {pathToFileURL} from 'node:url';
 import JSZip from 'jszip';
 import {build} from 'esbuild';
 import {canonicalJson,releaseSigningPayload} from '../src/extensions/policy';
+import {contactAuthorityKind,emptyContactAuthority} from '../src/extensions/contact-admin';
 import type {ReleaseManifest} from '../src/extensions/contracts';
 import {SignedUpdateEngine,compareUpdateVersions,createUpdateDisk,createPinnedUpdateTransport,decryptUpdateBackup,
   encryptUpdateBackup,inspectUpdateZip,packagedUpdateLauncher,retainUpdateContacts,updateRelativePath,
@@ -265,7 +266,8 @@ test('real filesystem adapter contains writes, preserves existing snapshots and 
   }finally{assert.ok(root.startsWith(path.resolve('dist')+path.sep));await fs.rm(root,{recursive:true,force:true});}
 });
 
-test('rollback bridge copies main and EVERY linked receipt/approval, preserving no-replay records',async()=>{
+test('rollback bridge copies main and EVERY linked receipt/approval, preserving no-replay records',async(t)=>{
+  let observationClock=now;t.mock.method(Date,'now',()=>observationClock);
   const memory=()=>{const rows=new Map<string,any>();return {rows,get:async(k:string,id:string)=>structuredClone(rows.get(k+':'+id)),put:async(k:string,value:any)=>{rows.set(k+':'+value.id,structuredClone(value));return value;}};};
   const current=memory(),restored=memory();
   const binding={routeId:'route',routeRevision:1,recipientId:'recipient',recipientSha256:'a'.repeat(64),workflowId:'workflow',templateId:'template',templateVersion:1,bodySha256:'b'.repeat(64)};
@@ -273,10 +275,36 @@ test('rollback bridge copies main and EVERY linked receipt/approval, preserving 
     entry:{intent:{requestId:id,binding},createdAt:now-100,phase:'final',receipt:{id:'remote-'+id,requestId:id,binding,adapter:'fixture',state:'sent',observedAt:now,evidence:{source:'service-receipt',recordId:'record-'+id}},fingerprint:'c'.repeat(64),channel:'gmail'}});
   await current.put('contact-outbox-approval',{id:'approval-1',expiresAt:now+100});await current.put('contact-outbox-approval',{id:'approval-2',expiresAt:now+100,previous:'approval-1'});
   await current.put('contact-outbox',{id:'main',version:2,entries:[],challenges:[],consumedApprovals:[],verifiedRoutes:[],archiveHead:'receipt-2',approvalHead:'approval-2'});
+  const observedBefore=Date.now();await retainUpdateContacts(current,restored);const observedAfter=Date.now();
+  const expectedKeys=['contact-outbox:main','contact-outbox-receipt:receipt-1','contact-outbox-receipt:receipt-2',
+    'contact-outbox-approval:approval-1','contact-outbox-approval:approval-2',contactAuthorityKind+':main'].sort();
+  assert.deepEqual([...restored.rows.keys()].sort(),expectedKeys);assert.equal(restored.rows.size,6);
+  // Retention rebuilds the linked chain in traversal order, preserving every
+  // original receipt/approval field and its exact request/binding/evidence.
+  for(const kind of ['contact-outbox-receipt','contact-outbox-approval']){
+    const prefix=kind==='contact-outbox-receipt'?'receipt':'approval';
+    for(const n of [1,2]){const original=await current.get(kind,prefix+'-'+n),saved=await restored.get(kind,prefix+'-'+n);
+      if(kind==='contact-outbox-receipt'){assert.ok(saved.entry.usageObservedAt>=observedBefore&&saved.entry.usageObservedAt<=observedAfter);original.entry={...original.entry,usageObservedAt:saved.entry.usageObservedAt};}
+      assert.deepEqual(saved,{...original,previous:n===1?prefix+'-2':undefined});
+    }
+  }
+  const observation=(await restored.get('contact-outbox-receipt','receipt-1')).entry.usageObservedAt;
+  assert.deepEqual(await restored.get('contact-outbox','main'),{...await current.get('contact-outbox','main'),
+    version:3,archiveHead:'receipt-1',approvalHead:'approval-1',usageClock:0,archivedReservations:[],archivedUnconfirmed:0,
+    accounting:{version:1,head:'receipt-1',recent:[{requestId:'receipt-1',channel:'gmail',observedAt:observation},{requestId:'receipt-2',channel:'gmail',observedAt:observation}]}});
+  const fence=(revision:number)=>({id:'main',...emptyContactAuthority(),revision});
+  assert.deepEqual(await restored.get(contactAuthorityKind,'main'),fence(1));
+  // Compare Store's durable JSON representation (optional undefined fields
+  // have no persisted bytes), including every original journal field.
+  const evidence=()=>JSON.parse(JSON.stringify([...restored.rows].filter(([key])=>key!==contactAuthorityKind+':main')));
+  const firstEvidence=evidence();
+  observationClock+=1000;
   await retainUpdateContacts(current,restored);
-  for(const kind of ['contact-outbox-receipt','contact-outbox-approval'])assert.equal([...restored.rows.keys()].filter(k=>k.startsWith(kind+':')).length,2);
-  assert.equal((await restored.get('contact-outbox','main')).archiveHead!==undefined,true);
-  await retainUpdateContacts(current,restored);assert.equal(restored.rows.size,5); // interruption/retry is idempotent
+  assert.deepEqual([...restored.rows.keys()].sort(),expectedKeys);assert.equal(restored.rows.size,6);
+  assert.deepEqual(evidence(),firstEvidence);
+  // A strictly empty ready record remains empty on repeated missing-source
+  // retention. No permission, events, requests or dispatch evidence is added.
+  assert.deepEqual(await restored.get(contactAuthorityKind,'main'),fence(1));
   current.rows.delete('contact-outbox-receipt:receipt-1');await assert.rejects(retainUpdateContacts(current,memory()));
 });
 
