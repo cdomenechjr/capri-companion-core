@@ -137,12 +137,25 @@ export function ExtensionSettings(props:ExtensionSettingsProps){
     {runner.pendingCount()>0&&<p className="small" role="status">{runner.pendingCount()} request{runner.pendingCount()===1?'':'s'} waiting for receipts.</p>}
     {runner.abandonedCount()>0&&<p className="small" role="status">{runner.abandonedCount()} timed-out request{runner.abandonedCount()===1?' has':'s have'} not settled. Their outcome is unknown; nothing is resent.</p>}
     <CursorControls {...ctx} chooseFolder={props.chooseFolder??(()=>window.capri?.chooseFolder()??Promise.resolve(null))}/>
+    <SkillsControls {...ctx}/>
     <SecurityControls {...ctx} overview={security} load={reloadSecurity} loading={securityBusy}/>
     {/* Keyed by the fence: forms, prompts and exact-message previews are discarded on every privacy boundary. */}
     <ContactsControls key={'contacts:'+fence} {...fenced} overview={contacts} load={reloadContacts} loading={contactsBusy} contactAdmin={props.contactAdmin}/>
     <AgentControls key={'agents:'+fence} {...fenced} overview={agents} load={reloadAgents} loading={agentsBusy} initialConnection={props.initial?.codexConnection}/>
     <UpdateControls {...ctx}/>
   </section>;
+}
+
+export function SkillsControls(ctx:ExtensionContext){
+  const capability=statusOf(ctx.status)?.features.skills,saved=settingsOf(ctx.settings)?.skills;
+  const locked=serviceMissing(ctx.status)||!ctx.settingsConfirmed||!saved||ctx.runner.busy('skills/configure');
+  const configure=(enabled:boolean)=>{const input=confirmedWrite(saved,ctx.settingsConfirmed,['enabled'],{enabled});if(input)ctx.act('skills/configure',input);};
+  return <div className="ext-section"><h3>Reviewed skills</h3>
+    <BadgeLine badge={capabilityBadge(capability)}/>
+    <Toggle id="ext-skills-enabled" label="Use reviewed skills" hint="Let Capri select built-in and reviewed workflows for your requests. Open Skills and load the catalog to inspect each workflow." checked={!!saved?.enabled} disabled={locked} onChange={configure}/>
+    <p className="small muted">Skills follow your current task permissions, local-only choices and provider settings.</p>
+    <ActionNote runner={ctx.runner} slot="skills/configure"/>
+  </div>;
 }
 
 const durations:[number,string][]=[[0,'This session (until disable, Stop or quit)'],[30000,'30 s trial'],[300000,'5 min trial']];

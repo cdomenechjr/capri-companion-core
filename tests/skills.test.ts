@@ -54,11 +54,12 @@ function registry(options?:{dropWrites?:boolean}){const f=fakeStore(options);let
   return {...f,registry:new SkillRegistry({store:f.store,clock:()=>clock}),tick:(ms:number)=>{clock+=ms;}};}
 const ui=(privateSession=false):ExtensionActionContext=>({signal:new AbortController().signal,authority:'trusted-ui',privateSession,localOnly:false});
 const task=(privateSession=false):ExtensionActionContext=>({...ui(privateSession),authority:'task',taskId:'task-1'});
-// Host facts from the real capability builders: browser available, image provider unconfigured.
+// Host facts from the real builders with a Windows host advertised deterministically,
+// so desktop routing is exercised on every development platform. Images stay unconfigured.
 // This registry fake advertises installed fixed handlers; it never asserts outcomes passed.
 const hostFacts=(change:{browser?:boolean;images?:boolean;security?:boolean;verifiedChecks?:string[];availableVerifiers?:string[]}={}):SkillHostFacts=>{
   const provider=providerCapabilities(undefined).map(c=>c.id==='images'&&change.images?{...c,available:true}:c);
-  return resolveSkillHostFacts({capabilities:[...capabilities(change.browser??true,[]),...provider],
+  return resolveSkillHostFacts({capabilities:[...capabilities(change.browser??true,[]).map(c=>c.id==='windows'?{...c,available:true}:c),...provider],
     extensions:{security:{available:change.security??false}},verifiedChecks:change.verifiedChecks??[],availableVerifiers:change.availableVerifiers??Object.keys(registeredSkillChecks)});
 };
 // Store.get can be paused to interleave session end, Stop or close() with a pending operation.
@@ -91,8 +92,12 @@ test('built-in skills reference only real tool names and host capability IDs',()
     const [kind,name]=check.producer.split(':');
     assert.ok(kind==='tool'?real.has(name):name==='security',check.producer);
   }
-  assert.deepEqual([...builtInSkillIds].sort(),['browser-workflow','coding-workbench','creative-studio','desktop-troubleshooting',
-    'document-artifacts','download-inspection','file-backups','game-workshop','reminders-plans','research-briefing']);
+  assert.deepEqual([...builtInSkillIds].sort(),['ai-engineer','browser-workflow','clean-code-review','clean-code-training-coach',
+    'coding-workbench','concurrency-clean-code-review','content-creator','creative-studio','data-ethics-privacy-governance',
+    'data-modeling-query-patterns','derived-data-systems','desktop-troubleshooting','document-artifacts','download-inspection',
+    'error-handling-exception-design','evidence-led-product-states','file-backups','game-workshop','pr-review','reminders-plans',
+    'research-briefing','sprint-prioritizer','tool-evaluator','visual-storyteller','workflow-optimizer']);
+  assert.equal(new Set(builtInSkillIds).size,builtInSkillIds.length);
   for(const id of builtInSkillIds){
     const skill=builtInSkill(id)!;const {manifest,recipe}=skill;
     assert.deepEqual(SkillManifestSchema.parse(manifest),manifest);
@@ -113,6 +118,62 @@ test('built-in skills reference only real tool names and host capability IDs',()
   assert.ok(!builtInSkill('coding-workbench')!.manifest.permissions.includes('delegate'));
   assert.equal(builtInSkill('research-briefing')!.manifest.localOnly,false);
   assert.equal(builtInSkill('coding-workbench')!.manifest.localOnly,true);
+});
+
+const companionRequests:ReadonlyArray<readonly [string,string]>=[
+  ['sprint-prioritizer','Prioritize this sprint backlog and explain the tradeoffs'],
+  ['clean-code-training-coach','Coach me through this code and give me a practice exercise'],
+  ['workflow-optimizer','Analyze this repetitive workflow and suggest an automation plan'],
+  ['content-creator','Draft a newsletter from these supplied product notes'],
+  ['visual-storyteller','Plan the visual storytelling and shot list for this idea'],
+  ['tool-evaluator','Compare these tools against my budget and requirements'],
+  ['clean-code-review',"Review this project's maintainability and code smells"],
+  ['pr-review','Review this pull request diff for regressions and test gaps'],
+  ['evidence-led-product-states','Review the empty state and permission state in this component'],
+  ['ai-engineer','Review this RAG retrieval design and its evaluation plan'],
+  ['data-modeling-query-patterns','Review this memory design and its data modeling choices'],
+  ['derived-data-systems','Review this search index and cache reconciliation plan'],
+  ['concurrency-clean-code-review','Review concurrency and cancellation in these selected files'],
+  ['error-handling-exception-design','Review error handling and null handling at this provider boundary'],
+  ['data-ethics-privacy-governance','Review privacy, consent and retention in this data flow'],
+];
+test('companion workflows ship in a fresh catalog and route natural requests without paid or delegated tools',async()=>{
+  const {registry:r,records}=registry();
+  const facts=resolveSkillHostFacts({capabilities:[...capabilities(true,[]),...providerCapabilities(undefined)]});
+  const context=ctx({facts}),catalog=new Map((await r.list(context)).map(entry=>[entry.skillId,entry]));
+  for(const [id,text] of companionRequests){
+    assert.equal(catalog.get(id)?.state,'ready',id);
+    assert.equal(catalog.get(id)?.provenance.kind,'built-in',id);
+    assert.deepEqual(catalog.get(id)?.paidTools,[],id);
+    const selection=await r.select({text},context);
+    assert.ok(selection.selected.some(skill=>skill.skillId===id),text);
+    const [guidance]=await r.guidance([id],{...context,requestText:text});
+    assert.equal(guidance.skillId,id);assert.match(guidance.instructions,/grants no tools, permissions or approvals/);
+    assert.ok(!guidance.tools.includes('delegate_task'));assert.ok(!guidance.tools.includes('generate_image'));
+  }
+  assert.equal(records(),0,'shipped skills need no draft, profile migration or installation write');
+});
+test('companion guidance respects local-only mode, global disable and saved revocations',async()=>{
+  const {registry:r}=registry();
+  for(const [id] of companionRequests){
+    const offline=await r.guidance([id],ctx({localOnly:true}));
+    assert.equal(offline.length,id==='tool-evaluator'?0:1,id);
+    assert.deepEqual(await r.guidance([id],ctx({enabled:false})),[],id);
+  }
+  assert.ok((await r.revoke('sprint-prioritizer',ui())).ok);
+  assert.equal((await r.select({text:companionRequests[0][1]},ctx())).selected.some(skill=>skill.skillId==='sprint-prioritizer'),false);
+  assert.deepEqual(await r.guidance(['sprint-prioritizer'],ctx()),[]);
+});
+test('companion advice does not require saving a file or plan, but requested saved outputs do',async()=>{
+  const {registry:r}=registry();
+  for(const [id,text] of companionRequests){
+    const [guidance]=await r.guidance([id],ctx());
+    assert.equal(skillWorkflowRequested(guidance,text),false,text);
+  }
+  const [coach]=await r.guidance(['clean-code-training-coach'],ctx());
+  assert.equal(skillWorkflowRequested(coach,'Create a markdown worksheet to practice this lesson'),true);
+  const [planner]=await r.guidance(['sprint-prioritizer'],ctx());
+  assert.equal(skillWorkflowRequested(planner,'Create a plan for the sprint'),true);
 });
 
 test('coding readiness advertises its fixed toolchains and refuses unsupported project proof in selection, status and guidance',async()=>{

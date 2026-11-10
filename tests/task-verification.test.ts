@@ -87,6 +87,36 @@ test('actual read_file plus a document explanation completes without requiring a
   }finally{await f.close();}
 });
 
+test('new companion coaching and planning workflows answer without inventing saved artifacts or plans',async()=>{
+  for(const text of ['Coach me through this code and give me a practice exercise','Prioritize this sprint backlog',
+    'Draft a newsletter from these supplied product notes','Review this RAG retrieval design']){
+    const f=await fixture({coding:true});try{
+      const task=await f.run([done('Here is the requested guidance.')],text);
+      assert.equal(task?.status,'completed',text);assert.equal(task?.taskVerified,false,text);
+      assert.deepEqual(await f.store.list('artifact'),[]);assert.deepEqual(await f.store.list('plan'),[]);
+      assert.deepEqual(await f.store.list(skillEvidenceKind),[]);
+    }finally{await f.close();}
+  }
+});
+test('a saved coaching worksheet binds and verifies its own artifact rather than accepting a final-answer claim',async()=>{
+  const text='Coach me with a practice exercise and create a markdown worksheet';
+  for(const produce of [false,true]){
+    const f=await fixture({coding:true});try{
+      const responses=produce?[call('create_artifact',f.artifact),done('Saved memo.md.')]:[done('Saved memo.md.')];
+      const task=await f.run(responses,text);
+      if(produce){
+        assert.equal(task?.status,'completed');assert.equal(task?.taskVerified,true);
+        const receipts=await f.store.list(skillEvidenceKind);
+        assert.ok(receipts.some(row=>row.receipt.binding.skillId==='clean-code-training-coach'));
+        assert.match(await readFile(path.join(f.workspace,'memo.md'),'utf8'),/Neutral test content/);
+      }else{
+        assert.notEqual(task?.status,'completed');assert.notEqual(task?.taskVerified,true);
+        assert.deepEqual(await f.store.list('artifact'),[]);
+      }
+    }finally{await f.close();}
+  }
+});
+
 test('fresh zero-outcome document planning executes real writer and verifies its own read-back before success',async()=>{
   const f=await fixture();try{
     assert.deepEqual(await f.store.list(skillEvidenceKind),[]);

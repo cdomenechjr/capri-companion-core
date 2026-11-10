@@ -72,6 +72,7 @@ export const SkillTeachInputSchema=z.object({
     extensions:z.array(z.literal('security')).max(1),steps:lines(12,400),verify:lines(8,300),checks:z.array(id).min(1).max(16)}).strict(),
 }).strict();
 export const uiActionSchemas={
+  'skills/configure':z.object({enabled:z.boolean()}).strict(),
   'cursor/import':z.object({folder:z.string().min(3).max(1024)}).strict(),
   'cursor/configure':CursorSettingsSchema,
   'cursor/restore':empty,
@@ -114,7 +115,7 @@ export type UiActionInput<A extends UiAction>=z.input<typeof uiActionSchemas[A]>
 export const taskScopedActions:readonly UiAction[]=['agents/grant','agents/start','agents/inspect','agents/cancel'];
 type Effect='read'|'settings'|'effect';
 const readActions=new Set<UiAction>(['skills/list','security/inspect','agents/inspect','updates/check','security/health']);
-const settingsActions=new Set<UiAction>(['cursor/configure','security/configure','contacts/configure','agents/configure','agents/select-codex-model','updates/configure']);
+const settingsActions=new Set<UiAction>(['cursor/configure','skills/configure','security/configure','contacts/configure','agents/configure','agents/select-codex-model','updates/configure']);
 export const actionEffect=(action:UiAction):Effect=>readActions.has(action)?'read':settingsActions.has(action)?'settings':'effect';
 const confirmedText:Partial<Record<UiAction,string>>={
   'cursor/import':'Cursor pack imported privately and validated by the service.',

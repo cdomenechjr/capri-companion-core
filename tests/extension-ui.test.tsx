@@ -4,7 +4,7 @@ import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {ActionNote,ContactReviewDetails,ExtensionSettings,SkillsPanel,confirmedWrite,teachInput,emptyTeachForm,type ExtensionSettingsProps} from '../src/ui/ExtensionSettings';
 import {
-  approvalInput,capabilityBadge,contactReviewKey,createActionRunner,createContactReviewController,createSkillsSession,cursorBadge,deliveryBadge,extensionRoutes,interpretReply,olderServiceMessage,readContactReview,
+  actionEffect,approvalInput,capabilityBadge,contactReviewKey,createActionRunner,createContactReviewController,createSkillsSession,cursorBadge,deliveryBadge,extensionRoutes,interpretReply,olderServiceMessage,readContactReview,
   readCodexConnection,readExtensionSettings,readExtensionStatus,readKey,readOverview,reviewCurrent,scopedRunner,securityJobBadge,skillsCatalogKey,uiActionSchemas,updatesBadge,agentJobBadge,
   type ContactReview,type ExtensionReply,type ExtensionRequest,type ReadView,type SetTimer,type SkillCatalog,
 } from '../src/ui/extensions-api';
@@ -53,6 +53,24 @@ test('rendering the controls and skills panel makes no service request and claim
   assert.ok(disabledButton(html,'Check for updates'));
 });
 
+test('the skills switch requires confirmed settings and changes only its enabled flag through a settings receipt',async()=>{
+  const {calls,request}=fakeService((_method,_route,body)=>({ok:true,body:receipt(body,{feature:'skills',action:'configure'})}));
+  assert.match(render({request}),/id="ext-skills-enabled"[^>]*disabled=""/);
+  const settings=defaultExtensionSettings(),status=defaultExtensionStatus(1000);
+  const off=render({request,initial:{settings:ready(settings),status:ready(status)}});
+  assert.match(off,/Use reviewed skills/);
+  assert.doesNotMatch(off,/id="ext-skills-enabled"[^>]*(?:disabled|checked)=""/);
+  settings.skills.enabled=true;
+  assert.match(render({request,initial:{settings:ready(settings),status:ready(status)}}),/id="ext-skills-enabled"[^>]*checked=""/);
+  assert.equal(calls.length,0,'rendering never enables skills');
+  assert.equal(actionEffect('skills/configure'),'settings');
+  assert.equal(uiActionSchemas['skills/configure'].safeParse({enabled:true,permissions:['delegate']}).success,false);
+  const runner=createActionRunner({request});
+  const result=await runner.run('skills/configure',{enabled:true})!;
+  assert.equal(result.state,'completed');assert.equal(runner.writeCount(),1);
+  assert.equal(calls[0].route,'/v1/extensions/skills/configure');assert.deepEqual(calls[0].body.input,{enabled:true});
+});
+
 test('Codex settings show one-time isolated sign-in, explicit model choice and inference-free evidence',()=>{
   const f=fakeService(()=>assert.fail('render must not inspect accounts or start login'));
   const cold=render({request:f.request,initial:{settings:ready(defaultExtensionSettings())}});
@@ -87,7 +105,7 @@ test('Codex connection reads reject leaks and setup actions require matching rec
 test('the default unconfigured status shows each provider unavailable and only recovery controls enabled',()=>{
   const status=defaultExtensionStatus(1000);
   const html=render({initial:{status:ready(status),settings:ready(defaultExtensionSettings())}});
-  assert.equal((html.match(/>UNAVAILABLE · NOT CONFIGURED</g)??[]).length,5,'cursor, security, contacts and both agent providers');
+  assert.equal((html.match(/>UNAVAILABLE · NOT CONFIGURED</g)??[]).length,6,'cursor, skills, security, contacts and both agent providers');
   assert.equal((html.match(/>UNAVAILABLE · UNTRUSTED</g)??[]).length,2,'update trust and update state');
   assert.match(html,/No operator-pinned release key/);assert.doesNotMatch(html,/>READY</);
   for(const label of['Health check','Quick scan','Signature update','Full scan…','Scan this path','Check for updates'])assert.ok(disabledButton(html,label),label);
